@@ -157,7 +157,7 @@ catalogoRouter.delete(
       `DELETE FROM catalogo_item WHERE tenant_id = $1 AND id = $2 RETURNING id`,
       [tenant, id],
     )
-    if (r.rowCount === 0) throw new ErroDominio('NAO_ENCONTRADO', 'Item não encontrado.', 404)
+    if (r.rowCount === 0) throw new ErroDominio('CATALOGO_NAO_ENCONTRADO', 'Item não encontrado.', 404)
     emitir(tenant, 'catalogo:updated', { id })
     res.json({ id, removido: true })
   }),
