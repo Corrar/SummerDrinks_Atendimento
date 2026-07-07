@@ -3,7 +3,7 @@
 
 export type Pagamento = 'Pix' | 'Dinheiro' | 'Cartão'
 export type StatusPedido = 'preparo' | 'pronto' | 'entregue'
-export type StatusAgenda = 'solicitado' | 'agendado' | 'confirmado'
+export type StatusAgenda = 'solicitado' | 'agendado' | 'confirmado' | 'recusado'
 export type SlotDispo = 'tarde' | 'noite' | 'madrugada'
 
 export interface ItemPedido {
@@ -85,5 +85,19 @@ export class ConflitoVersao extends ErroDominio {
 export class TransicaoInvalida extends ErroDominio {
   constructor(de: StatusPedido, para: StatusPedido) {
     super('TRANSICAO_INVALIDA', `Transição inválida: ${de} → ${para}.`, 409)
+  }
+}
+
+// ---------- máquina de estados da AGENDA (espelha TRANSICOES de pedido) ----------
+export const TRANSICOES_AGENDA: Readonly<Record<StatusAgenda, readonly StatusAgenda[]>> = {
+  solicitado: ['agendado', 'recusado'],
+  agendado:   ['confirmado', 'recusado'],
+  confirmado: [],   // terminal
+  recusado:   [],   // terminal
+}
+
+export class TransicaoAgendaInvalida extends ErroDominio {
+  constructor(de: StatusAgenda, para: StatusAgenda) {
+    super('TRANSICAO_AGENDA_INVALIDA', `Transição de agenda ${de}→${para} não permitida.`, 409)
   }
 }

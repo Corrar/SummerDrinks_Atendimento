@@ -9,6 +9,7 @@ import { authRouter } from './http/routes/auth.js'
 import { ordersRouter } from './http/routes/orders.js'
 import { publicRouter } from './http/routes/public.js'
 import { catalogoRouter } from './http/routes/catalogo.js'
+import { agendasRouter } from './http/routes/agendas.js'
 import { autenticar } from './http/middleware/auth.js'
 import { tratadorErro } from './http/middleware/validate.js'
 
@@ -42,7 +43,8 @@ export function criarApp(): Express {
   app.use(autenticar)
   app.use(ordersRouter) // /orders, /panel/*
   app.use(catalogoRouter) // /catalogo (CRUD gestão)
-  // Fase 2+: app.use(agendasRouter) → dispoRouter → configRouter (já sob a fronteira).
+  app.use(agendasRouter) // /agendas (leitura gestão/pdv/painel; mutações gestão)
+  // Fase 3+: app.use(dispoRouter) → configRouter (já sob a fronteira).
 
   app.use(tratadorErro)
   return app
