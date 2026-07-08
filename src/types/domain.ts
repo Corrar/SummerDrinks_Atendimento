@@ -59,6 +59,28 @@ export interface DispoDia {
   version: number
 }
 
+// Config da operação (1 linha por tenant). Shapes espelham data/config do frontend.
+export interface Horario {
+  dia: string
+  curto: string
+  aberto: boolean
+  abre: string // 'HH:MM'
+  fecha: string // 'HH:MM'
+}
+export interface Local {
+  id: string
+  nome: string
+  endereco: string
+  ativo: boolean
+}
+export interface Config {
+  horarios: Horario[]
+  locais: Local[]
+  telefone: string // PII de contato — NUNCA em /public/*
+  whatsapp: string // idem
+  version: number
+}
+
 export interface PainelEstado {
   sort: number[]
   ultimaChamada: number | null

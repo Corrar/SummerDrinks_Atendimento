@@ -107,6 +107,22 @@ publicRouter.get(
   }),
 )
 
+// ---------- CONFIG pública: SÓ horarios + locais (NUNCA telefone/whatsapp) ----------
+// Contato é PII comercial e fica só no GET autenticado da gestão (ver config.ts).
+publicRouter.get(
+  '/public/:tenant/config',
+  asy(async (req, res) => {
+    const tid = await tenantIdPorSlug(String(req.params.tenant))
+    const r = await pool.query<{ horarios: unknown; locais: unknown }>(
+      `SELECT horarios, locais FROM config WHERE tenant_id=$1`,
+      [tid],
+    )
+    const row = r.rows[0]
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.json({ horarios: row?.horarios ?? [], locais: row?.locais ?? [] })
+  }),
+)
+
 // ---------- rate limits (IP + tenant) ----------
 const limitePedido = rateLimit({
   windowMs: Number(process.env.PUBLIC_RATE_JANELA_MS ?? 60_000),
