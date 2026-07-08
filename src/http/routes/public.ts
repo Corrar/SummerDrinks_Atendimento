@@ -79,9 +79,25 @@ publicRouter.get(
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
     const mes = String(req.query.mes ?? '').match(/^\d{4}-\d{2}$/) ? String(req.query.mes) : new Date().toISOString().slice(0, 7)
+    // Disponibilidade PÚBLICA = base declarada MENOS ocupação de agenda aceita.
+    // Ocupa quem está 'agendado'/'confirmado' no mesmo dia+período; o período deriva
+    // da hora canônica do slot (acl.MAPA_SLOT: 14:00/19:00/23:00). Um único snapshot
+    // (subqueries no mesmo SELECT) elimina a race entre "ler base" e "ler ocupação".
+    // Isto é HINT de exibição, não reserva — a verdade da concorrência é o FOR UPDATE
+    // do booking. Índice agenda_status_ix (tenant_id, status, data) cobre os NOT EXISTS.
     const manual = await pool.query<{ iso: string; tarde: boolean; noite: boolean; madrugada: boolean }>(
-      `SELECT to_char(iso,'YYYY-MM-DD') iso, tarde, noite, madrugada
-         FROM disponibilidade WHERE tenant_id=$1 AND to_char(iso,'YYYY-MM')=$2`,
+      `SELECT to_char(d.iso,'YYYY-MM-DD') iso,
+              d.tarde     AND NOT EXISTS (SELECT 1 FROM agenda a
+                 WHERE a.tenant_id=d.tenant_id AND a.data=d.iso
+                   AND a.status IN ('agendado','confirmado') AND a.hora='14:00') AS tarde,
+              d.noite     AND NOT EXISTS (SELECT 1 FROM agenda a
+                 WHERE a.tenant_id=d.tenant_id AND a.data=d.iso
+                   AND a.status IN ('agendado','confirmado') AND a.hora='19:00') AS noite,
+              d.madrugada AND NOT EXISTS (SELECT 1 FROM agenda a
+                 WHERE a.tenant_id=d.tenant_id AND a.data=d.iso
+                   AND a.status IN ('agendado','confirmado') AND a.hora='23:00') AS madrugada
+         FROM disponibilidade d
+        WHERE d.tenant_id=$1 AND to_char(d.iso,'YYYY-MM')=$2`,
       [tid, mes],
     )
     const dias: Record<string, { tarde: boolean; noite: boolean; madrugada: boolean }> = {}

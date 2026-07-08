@@ -5,7 +5,8 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import { pool } from '../../db/pool.js'
-import { emitir } from '../../realtime/io.js'
+import { emitir, emitirPublico } from '../../realtime/io.js'
+import { slugDeTenant } from '../../db/tenant.js'
 import { exigirPapel } from '../middleware/auth.js'
 import { validarBody } from '../middleware/validate.js'
 import { AgendaService, type AgendaBase } from '../../services/AgendaService.js'
@@ -115,6 +116,11 @@ agendasRouter.patch(
     const motivo: string | null = req.body.motivo ?? null
     const row = await AgendaService.transicionar(tenant, String(req.params.id), req.body.status, motivo)
     emitir(tenant, 'agenda:updated', row)
+    // Ocupação de slot pode ter mudado ('agendado'/'confirmado' ocupam; 'recusado' libera)
+    // → manda a base pública recomputar. Hint de exibição: over-emit é seguro, sem PII.
+    emitir(tenant, 'dispo:updated', { iso: row.data })
+    const slug = await slugDeTenant(tenant)
+    if (slug) emitirPublico(slug, 'dispo:updated', { iso: row.data })
     res.json(row)
   }),
 )

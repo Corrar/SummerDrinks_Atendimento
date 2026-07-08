@@ -50,6 +50,15 @@ export interface Agenda {
   status: StatusAgenda
 }
 
+// Base de disponibilidade do dia (gestão edita; o público lê já mesclado c/ ocupação).
+export interface DispoDia {
+  iso: string // 'YYYY-MM-DD'
+  tarde: boolean
+  noite: boolean
+  madrugada: boolean
+  version: number
+}
+
 export interface PainelEstado {
   sort: number[]
   ultimaChamada: number | null

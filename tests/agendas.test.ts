@@ -9,6 +9,10 @@ vi.mock('../src/db/pool.js', () => ({
   pool: { query: vi.fn() },
   withTransaction: vi.fn(),
 }))
+// Colaboradores do emit 'dispo:updated' pós-transição (Fase 4): stub para não tocar
+// socket nem disparar pool.query fora do fluxo sob teste.
+vi.mock('../src/realtime/io.js', () => ({ emitir: vi.fn(), emitirPublico: vi.fn() }))
+vi.mock('../src/db/tenant.js', () => ({ slugDeTenant: vi.fn().mockResolvedValue('summer') }))
 
 import { criarApp } from '../src/app.js'
 import { pool, withTransaction } from '../src/db/pool.js'
