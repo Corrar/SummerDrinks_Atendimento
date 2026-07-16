@@ -1,0 +1,51 @@
+# Blueprint Render: 1 web service (Node persistente, com OutboxWorker embutido)
+# + 1 pre-deploy job que roda as migrations. Deploy: New → Blueprint → aponta
+# esse repositório. Preenche as env vars sync=false pelo dashboard.
+services:
+  - type: web
+    name: summer-drinks-atendimento
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false             # cole o postgres://... do Neon no dashboard
+      - key: JWT_SECRET
+        generateValue: true     # Render gera 32+ chars aleatórios
+      - key: JWT_EXP_SEGUNDOS
+        value: 900
+      - key: CORS_ORIGINS
+        sync: false             # domínio real do PWA na Vercel
+      - key: NOTIF_DRIVER
+        value: fake             # troca p/ 'green' quando adapter real chegar
+      - key: NOTIF_WORKER
+        value: "true"
+      - key: SEED_ADMIN_SENHA
+        sync: false             # senha do admin (só usada por scripts/seed)
+      - key: PUBLIC_RATE_PEDIDO_MAX
+        value: 20
+      - key: PUBLIC_RATE_EVENTO_MAX
+        value: 5
+      - key: PUBLIC_RATE_AGENDA_STATUS_MAX
+        value: 120
+      - key: PUBLIC_RATE_JANELA_MS
+        value: 60000
+
+  - type: pserv                 # private worker (não precisa web): roda migrate uma vez
+    name: summer-drinks-migrate
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: false           # dispare manual quando precisar migrar
+    dockerCommand: node --loader ./node_modules/tsx/dist/loader.js scripts/migrate.ts
+    envVars:
+      - fromGroup: shared
+    # NOTA: se preferir simplicidade, delete este service e rode migrations local com:
+    #   DATABASE_URL='postgres://...' npm run migrate
+    # Feito 1 vez por versão de schema.
