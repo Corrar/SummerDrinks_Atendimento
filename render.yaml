@@ -1,6 +1,22 @@
-# Blueprint Render: 1 web service (Node persistente, com OutboxWorker embutido)
-# + 1 pre-deploy job que roda as migrations. Deploy: New → Blueprint → aponta
-# esse repositório. Preenche as env vars sync=false pelo dashboard.
+# Blueprint Render: 1 web service persistente (Express + Socket.IO + OutboxWorker
+# rodam no mesmo processo Node). Deploy: New → Blueprint → aponta este repositório.
+# Env vars sync=false você preenche no dashboard.
+#
+# NÃO usamos `generateValue: true` porque na prática o Render as vezes não gera
+# no primeiro apply, deixando o serviço subindo com env faltando (ver zod check
+# em src/config/env.ts). Em vez disso, geramos localmente:
+#     openssl rand -hex 32
+# e colamos como JWT_SECRET no dashboard.
+#
+# NÃO setamos PORT — Render injeta automaticamente na porta interna do container.
+# O env.ts default (3000) só é usado em dev.
+#
+# Migrations: rodar localmente contra o Neon UMA vez por versão de schema:
+#     DATABASE_URL='postgres://...neon.tech/...' npm run migrate
+#     DATABASE_URL='...' npm run seed   # opcional, cria tenant summer + admin
+# (o worker de migração via container não vale a pena — tsx é devDep, não vem
+#  no runtime image; validado no smoke local, mais barato rodar da sua máquina.)
+
 services:
   - type: web
     name: summer-drinks-atendimento
@@ -12,40 +28,25 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
       - key: DATABASE_URL
-        sync: false             # cole o postgres://... do Neon no dashboard
+        sync: false        # cole postgres://user:pass@ep-xxx.neon.tech/db?sslmode=require
       - key: JWT_SECRET
-        generateValue: true     # Render gera 32+ chars aleatórios
+        sync: false        # cole `openssl rand -hex 32` (64 chars hex)
       - key: JWT_EXP_SEGUNDOS
-        value: 900
+        value: "900"
       - key: CORS_ORIGINS
-        sync: false             # domínio real do PWA na Vercel
+        sync: false        # https://summer-drinks-cliente.vercel.app (domínio do PWA)
       - key: NOTIF_DRIVER
-        value: fake             # troca p/ 'green' quando adapter real chegar
+        value: fake        # troca p/ 'green' quando GreenApiTransport real chegar
       - key: NOTIF_WORKER
         value: "true"
       - key: SEED_ADMIN_SENHA
-        sync: false             # senha do admin (só usada por scripts/seed)
+        sync: false        # senha do admin (usada só por scripts/seed local)
       - key: PUBLIC_RATE_PEDIDO_MAX
-        value: 20
+        value: "20"
       - key: PUBLIC_RATE_EVENTO_MAX
-        value: 5
+        value: "5"
       - key: PUBLIC_RATE_AGENDA_STATUS_MAX
-        value: 120
+        value: "120"
       - key: PUBLIC_RATE_JANELA_MS
-        value: 60000
-
-  - type: pserv                 # private worker (não precisa web): roda migrate uma vez
-    name: summer-drinks-migrate
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
-    autoDeploy: false           # dispare manual quando precisar migrar
-    dockerCommand: node --loader ./node_modules/tsx/dist/loader.js scripts/migrate.ts
-    envVars:
-      - fromGroup: shared
-    # NOTA: se preferir simplicidade, delete este service e rode migrations local com:
-    #   DATABASE_URL='postgres://...' npm run migrate
-    # Feito 1 vez por versão de schema.
+        value: "60000"
