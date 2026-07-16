@@ -140,6 +140,16 @@ const limiteEvento = rateLimit({
   keyGenerator: (req) => `${req.ip}:${req.params.tenant}:evento`,
   message: { erro: 'Muitas solicitações. Tente mais tarde.', codigo: 'RATE_LIMIT' },
 })
+// Consulta pública de status por protocolo: permissiva o suficiente para o polling
+// padrão do PWA (~15s → 4 req/min por cliente), rígida o suficiente para conter abuso.
+const limiteAgendaPublica = rateLimit({
+  windowMs: Number(process.env.PUBLIC_RATE_JANELA_MS ?? 60_000),
+  max: Number(process.env.PUBLIC_RATE_AGENDA_STATUS_MAX ?? 120),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.ip}:${req.params.tenant}:agenda_status`,
+  message: { erro: 'Muitas consultas. Aguarde um instante.', codigo: 'RATE_LIMIT' },
+})
 
 // ---------- PEDIDO do app → domínio (senha atômica, idempotente) ----------
 publicRouter.post(
@@ -186,5 +196,25 @@ publicRouter.post(
     const r = await EdgeIngestService.ingestEvento(tid, req.body)
     emitir(tid, 'agenda:updated', { origem: 'app_cliente', id: r.id, protocolo: r.protocolo })
     res.status(202).json({ protocolo: r.protocolo, mensagem: 'Solicitação recebida.' })
+  }),
+)
+
+// ---------- STATUS de agenda por protocolo (fecha o loop do evento para o cliente) ----------
+// Sem PII, sem id interno — o cliente aponta pelo protocolo SD-XXXXXX que recebeu.
+// motivo_recusa só é retornado quando status='recusado' (SQL já faz o CASE WHEN).
+publicRouter.get(
+  '/public/:tenant/agenda/:protocolo',
+  limiteAgendaPublica,
+  asy(async (req, res) => {
+    const tid = await tenantIdPorSlug(String(req.params.tenant))
+    const protocolo = String(req.params.protocolo)
+    // Formato do protocolo é fixado por ingestEvento: 'SD-' + base36(agora).toUpperCase().slice(-6).
+    // Base36 = [0-9A-Z]. Validar antes de tocar no DB (fail-fast, sem query desnecessária).
+    if (!/^SD-[0-9A-Z]{6}$/.test(protocolo)) {
+      throw new ErroDominio('PROTOCOLO_INVALIDO', 'Protocolo inválido.', 400)
+    }
+    const s = await EdgeIngestService.statusAgendaPorProtocolo(tid, protocolo)
+    res.setHeader('Cache-Control', 'no-store')
+    res.json(s)
   }),
 )

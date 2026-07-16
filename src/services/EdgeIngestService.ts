@@ -187,6 +187,40 @@ export const EdgeIngestService = {
     )
     return r.rows[0]?.token ?? null
   },
+
+  /**
+   * Status mínimo de uma solicitação de evento pelo protocolo público.
+   * Sem PII, sem valor interno de sistema — apenas o suficiente para o cliente
+   * saber se a solicitação foi aceita/recusada e (quando orçada) o valor.
+   * `motivo_recusa` só é retornado quando o status é 'recusado'.
+   */
+  async statusAgendaPorProtocolo(
+    tenantId: string,
+    protocolo: string,
+  ): Promise<{
+    status: import('../types/domain.js').StatusAgenda
+    data: string
+    hora: string
+    valor: string
+    motivo_recusa: string | null
+  }> {
+    const r = await pool.query<{
+      status: import('../types/domain.js').StatusAgenda
+      data: string
+      hora: string
+      valor: string
+      motivo_recusa: string | null
+    }>(
+      `SELECT status, to_char(data, 'YYYY-MM-DD') AS data, hora, valor::text AS valor,
+              CASE WHEN status = 'recusado' THEN motivo_recusa ELSE NULL END AS motivo_recusa
+         FROM agenda
+        WHERE tenant_id = $1 AND protocolo = $2`,
+      [tenantId, protocolo],
+    )
+    const row = r.rows[0]
+    if (!row) throw new ErroDominio('AGENDA_NAO_ENCONTRADA', 'Solicitação não encontrada.', 404)
+    return row
+  },
 }
 
 export type { Pedido }
