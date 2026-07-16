@@ -17,6 +17,7 @@
     "smoke:agendas": "tsx scripts/smoke-agendas.ts",
     "smoke:dispo": "tsx scripts/smoke-dispo.ts",
     "smoke:config": "tsx scripts/smoke-config.ts",
+    "smoke:outbox": "tsx scripts/smoke-outbox.ts",
     "test": "vitest run"
   },
   "dependencies": {

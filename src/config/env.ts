@@ -15,6 +15,12 @@ const schema = z.object({
   PUBLIC_RATE_JANELA_MS: z.coerce.number().int().positive().default(60_000),
   // Senha do usuário admin semeado (scripts/seed.ts). Opcional: só o seed exige.
   SEED_ADMIN_SENHA: z.string().min(8).max(200).optional(),
+  // Transporte de notificação do worker de outbox. 'fake' = in-memory (dev/test).
+  // 'green' hoje = stub (mesmo comportamento do fake) até o adapter real de Green API.
+  NOTIF_DRIVER: z.enum(['fake', 'green']).default('fake'),
+  // Se 'true', o server sobe o OutboxWorker em background. Default true em dev,
+  // false em test (evita picos de I/O concorrentes com vitest).
+  NOTIF_WORKER: z.enum(['true', 'false']).optional(),
 })
 
 const parsed = schema.safeParse(process.env)
