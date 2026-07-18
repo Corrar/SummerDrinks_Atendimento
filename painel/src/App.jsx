@@ -5,15 +5,18 @@ import { PDV } from './screens/PDV.jsx';
 import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
 import { Dispo } from './screens/Dispo.jsx';
+import { Cardapio } from './screens/Cardapio.jsx';
 import { useOrders } from './hooks/useOrders.js';
 import { useAgendas } from './hooks/useAgendas.js';
 import { useDispo } from './hooks/useDispo.js';
+import { useCatalogo } from './hooks/useCatalogo.js';
 
 const ABAS = [
   { key: 'pdv', rotulo: 'PDV' },
   { key: 'painel', rotulo: 'Painel de senhas' },
   { key: 'agenda', rotulo: 'Agenda' },
   { key: 'dispo', rotulo: 'Disponibilidade' },
+  { key: 'cardapio', rotulo: 'Cardápio' },
 ];
 
 function Shell() {
@@ -25,6 +28,7 @@ function Shell() {
   const ordersApi = useOrders(autenticado);
   const agendasApi = useAgendas(autenticado && (aba === 'agenda' || aba === 'dispo'));
   const dispoApi = useDispo(autenticado && aba === 'dispo');
+  const catalogoApi = useCatalogo(autenticado && aba === 'cardapio');
 
   function toggleTema() {
     const t = tema === 'Claro' ? 'Noturno' : 'Claro';
@@ -120,6 +124,9 @@ function Shell() {
         )}
         {aba === 'dispo' && (
           <Dispo dispoApi={dispoApi} agendas={agendasApi.agendas} />
+        )}
+        {aba === 'cardapio' && (
+          <Cardapio itens={catalogoApi.itens} recarregar={catalogoApi.recarregar} />
         )}
       </main>
     </div>

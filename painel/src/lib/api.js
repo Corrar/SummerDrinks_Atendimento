@@ -149,6 +149,9 @@ export const api = {
 
   // --- catálogo ---
   listarCatalogo: () => chamar('/catalogo'),
+  criarItemCatalogo: (item) => chamar('/catalogo', { method: 'POST', body: item }),
+  salvarItemCatalogo: (item) => chamar(`/catalogo/${item.id}`, { method: 'PUT', body: item }),
+  excluirItemCatalogo: (id) => chamar(`/catalogo/${id}`, { method: 'DELETE' }),
 
   // --- dispo / config (fase 2 do painel) ---
   listarDispo: (mes) => chamar(`/dispo?mes=${mes}`),
