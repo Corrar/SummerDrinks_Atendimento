@@ -136,6 +136,8 @@ export const api = {
   entregar: (senha, receberAntes) => chamar(`/orders/${senha}/entrega`, { method: 'PATCH', body: { receberAntes } }),
   reordenarPainel: (sort, version) =>
     chamar('/panel/order', { method: 'PATCH', body: { sort }, headers: { 'If-Match': String(version) } }),
+  /** Relatório agregado (gestão): { pedidos, faturamento, ticketMedio, aReceber, porDia, porPagamento, maisVendidos, eventos } */
+  relatorio: (de, ate) => chamar(`/orders/relatorio?de=${de}&ate=${ate}`),
 
   // --- agendas ---
   listarAgendas: (filtro = {}) => {
