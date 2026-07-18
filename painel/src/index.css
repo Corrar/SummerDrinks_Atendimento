@@ -1,0 +1,47 @@
+/* ============================================================
+   Summer Drinks · Painel do Atendimento — estilos globais.
+   Paletas portadas do standalone (temaVars): Noturno / Claro / Festa.
+   O resto do estilo vive inline nos componentes (padrão do design).
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg, #16120d);
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Temas (aplicados via data-tema no root do app) ---- */
+.sd-painel {
+  --bg:#16120d; --surface:#211b13; --surface2:#2c241a; --card:#1c160f;
+  --fg:#f6efe2; --muted:#a99a83; --border:rgba(255,255,255,.09);
+  --accent:#f5a623; --accent2:#b6e84c; --headerbg:#1c160f; --onAccent:#1a1206;
+}
+.sd-painel[data-tema='Claro'] {
+  --bg:#efe9dd; --surface:#ffffff; --surface2:#f7f2e8; --card:#ffffff;
+  --fg:#241c12; --muted:#8a8070; --border:rgba(0,0,0,.10);
+  --accent:#d97529; --accent2:#2f9e63; --headerbg:#ffffff; --onAccent:#ffffff;
+}
+.sd-painel[data-tema='Festa'] {
+  --bg:#17112b; --surface:#241a3f; --surface2:#2f2350; --card:#221836;
+  --fg:#f4ecfb; --muted:#ad9bcf; --border:rgba(255,255,255,.11);
+  --accent:#ff5da2; --accent2:#45d6c2; --headerbg:#1d1433; --onAccent:#ffffff;
+}
+
+.sd-painel * { transition: background-color .25s ease, color .22s ease, border-color .25s ease; }
+.sd-painel button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sd-painel button:active { transform: scale(.97); }
+
+.sd-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.sd-scroll { scrollbar-width: none; }
+
+input, select, textarea { font-family: 'Hanken Grotesk', sans-serif; }
+input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--fg) 32%, transparent); }
+input:focus, textarea:focus, select:focus { outline: none; }
+
+@keyframes sdFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sdRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes sdPulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes sdModalIn { 0% { opacity: 0; transform: translateY(24px) scale(.94); } 100% { opacity: 1; transform: none; } }
