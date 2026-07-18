@@ -6,6 +6,7 @@ import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
 import { Dispo } from './screens/Dispo.jsx';
 import { Cardapio } from './screens/Cardapio.jsx';
+import { Config } from './screens/Config.jsx';
 import { useOrders } from './hooks/useOrders.js';
 import { useAgendas } from './hooks/useAgendas.js';
 import { useDispo } from './hooks/useDispo.js';
@@ -17,6 +18,7 @@ const ABAS = [
   { key: 'agenda', rotulo: 'Agenda' },
   { key: 'dispo', rotulo: 'Disponibilidade' },
   { key: 'cardapio', rotulo: 'Cardápio' },
+  { key: 'config', rotulo: 'Config' },
 ];
 
 function Shell() {
@@ -128,6 +130,7 @@ function Shell() {
         {aba === 'cardapio' && (
           <Cardapio itens={catalogoApi.itens} recarregar={catalogoApi.recarregar} />
         )}
+        {aba === 'config' && <Config ativo={aba === 'config'} />}
       </main>
     </div>
   );
