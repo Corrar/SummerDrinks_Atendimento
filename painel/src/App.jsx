@@ -4,13 +4,16 @@ import { Login } from './screens/Login.jsx';
 import { PDV } from './screens/PDV.jsx';
 import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
+import { Dispo } from './screens/Dispo.jsx';
 import { useOrders } from './hooks/useOrders.js';
 import { useAgendas } from './hooks/useAgendas.js';
+import { useDispo } from './hooks/useDispo.js';
 
 const ABAS = [
   { key: 'pdv', rotulo: 'PDV' },
   { key: 'painel', rotulo: 'Painel de senhas' },
   { key: 'agenda', rotulo: 'Agenda' },
+  { key: 'dispo', rotulo: 'Disponibilidade' },
 ];
 
 function Shell() {
@@ -18,9 +21,10 @@ function Shell() {
   const [aba, setAba] = useState('pdv');
   const [tema, setTema] = useState(() => localStorage.getItem('sdp_tema') || 'Noturno');
 
-  // hooks só pollam quando autenticado
+  // hooks só pollam quando autenticado (agendas também alimentam a ocupação da Dispo)
   const ordersApi = useOrders(autenticado);
-  const agendasApi = useAgendas(autenticado && aba === 'agenda');
+  const agendasApi = useAgendas(autenticado && (aba === 'agenda' || aba === 'dispo'));
+  const dispoApi = useDispo(autenticado && aba === 'dispo');
 
   function toggleTema() {
     const t = tema === 'Claro' ? 'Noturno' : 'Claro';
@@ -113,6 +117,9 @@ function Shell() {
         )}
         {aba === 'agenda' && (
           <Agenda agendas={agendasApi.agendas} transicionar={agendasApi.transicionar} orcar={agendasApi.orcar} />
+        )}
+        {aba === 'dispo' && (
+          <Dispo dispoApi={dispoApi} agendas={agendasApi.agendas} />
         )}
       </main>
     </div>
