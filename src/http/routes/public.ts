@@ -30,6 +30,11 @@ async function tenantIdPorSlug(slug: string): Promise<string> {
   return id
 }
 
+// UUID canônico (8-4-4-4-12). A regex frouxa [0-9a-f-]{36} deixava pseudo-UUIDs
+// (ex.: 36 hex sem hífen) passarem até o cast ::uuid do Postgres → 22P02 → 500
+// na borda pública. Fail-fast aqui garante o 400 TOKEN_INVALIDO documentado.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // Cor por categoria — espelha data/menu.js do app do cliente (para o app manter o visual).
 const COR_CATEGORIA: Readonly<Record<string, string>> = {
   Especiais: '#f5a623',
@@ -205,7 +210,7 @@ publicRouter.get(
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
     const token = String(req.params.token)
-    if (!/^[0-9a-f-]{36}$/i.test(token)) throw new ErroDominio('TOKEN_INVALIDO', 'Token inválido.', 400)
+    if (!UUID_RE.test(token)) throw new ErroDominio('TOKEN_INVALIDO', 'Token inválido.', 400)
     const s = await EdgeIngestService.statusPorToken(tid, token)
     res.setHeader('Cache-Control', 'no-store')
     res.json(s)
@@ -222,7 +227,7 @@ publicRouter.post(
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
     const token = String(req.params.token)
-    if (!/^[0-9a-f-]{36}$/i.test(token)) throw new ErroDominio('TOKEN_INVALIDO', 'Token inválido.', 400)
+    if (!UUID_RE.test(token)) throw new ErroDominio('TOKEN_INVALIDO', 'Token inválido.', 400)
     const r = await EdgeIngestService.ingestAvaliacao(tid, token, req.body)
     // Painel/gestão vê o feedback chegar em tempo real (sala privada; sem comentário
     // no emit — payload mínimo, o painel refetch a listagem quando quiser).

@@ -60,11 +60,16 @@ describe('POST /public/:tenant/pedido/:token/avaliacao — validação', () => {
     expect(r.body.codigo).toBe('VALIDACAO')
   })
 
-  it('token malformado no path → 400 TOKEN_INVALIDO', async () => {
-    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ id: TENANT }], rowCount: 1 } as never)
-    const r = await request(app).post('/public/summer/pedido/nao-e-uuid-xx/avaliacao').send({ nota: 5 })
-    expect(r.status).toBe(400)
-    expect(r.body.codigo).toBe('TOKEN_INVALIDO')
+  it('token malformado no path → 400 TOKEN_INVALIDO (nunca 500 do cast ::uuid)', async () => {
+    // Inclui pseudo-UUIDs de 36 chars que a antiga regex frouxa deixava passar
+    // até o Postgres (22P02 → 500): o guard deve barrar ANTES do banco.
+    const invalidos = ['nao-e-uuid-xx', 'f'.repeat(36), '-'.repeat(36), `123e4567e89b42d3a456-${'1'.repeat(15)}`]
+    for (const t of invalidos) {
+      vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ id: TENANT }], rowCount: 1 } as never)
+      const r = await request(app).post(`/public/summer/pedido/${t}/avaliacao`).send({ nota: 5 })
+      expect(r.status).toBe(400)
+      expect(r.body.codigo).toBe('TOKEN_INVALIDO')
+    }
   })
 })
 
