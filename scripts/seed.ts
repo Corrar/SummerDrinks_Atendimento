@@ -76,17 +76,27 @@ async function main(): Promise<void> {
     [tid, JSON.stringify(HORARIOS), JSON.stringify(LOCAIS)],
   )
 
-  // ---------- catálogo (3 itens) ----------
-  for (const it of CATALOGO) {
-    await pool.query(
-      `INSERT INTO catalogo_item (tenant_id, id, cat, nome, descricao, tamanhos, img, ordem)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, '', $7)
-       ON CONFLICT (tenant_id, id) DO UPDATE
-         SET cat = EXCLUDED.cat, nome = EXCLUDED.nome, descricao = EXCLUDED.descricao,
-             tamanhos = EXCLUDED.tamanhos, ordem = EXCLUDED.ordem,
-             atualizado_em = now()`,
-      [tid, it.id, it.cat, it.nome, it.descricao, JSON.stringify(it.tamanhos), it.ordem],
-    )
+  // ---------- catálogo (3 itens demo) ----------
+  // Só num catálogo VAZIO: os demos existem para o gate da Fase 1 em banco
+  // zerado. Depois que o cardápio real entra (scripts/seed-menu.ts os remove),
+  // re-rodar este seed — ex.: para rotacionar SEED_ADMIN_SENHA — não pode
+  // ressuscitá-los no menu público.
+  const temCatalogo = await pool.query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM catalogo_item WHERE tenant_id = $1`,
+    [tid],
+  )
+  const catalogoVazio = temCatalogo.rows[0]?.n === '0'
+  if (catalogoVazio) {
+    for (const it of CATALOGO) {
+      await pool.query(
+        `INSERT INTO catalogo_item (tenant_id, id, cat, nome, descricao, tamanhos, img, ordem)
+           VALUES ($1, $2, $3, $4, $5, $6::jsonb, '', $7)
+         ON CONFLICT (tenant_id, id) DO NOTHING`,
+        [tid, it.id, it.cat, it.nome, it.descricao, JSON.stringify(it.tamanhos), it.ordem],
+      )
+    }
+  } else {
+    console.log('[seed] catálogo já populado — itens demo NÃO semeados (fonte de verdade: painel/seed-menu)')
   }
 
   // ---------- usuário admin (gestão) ----------
@@ -100,7 +110,9 @@ async function main(): Promise<void> {
     [tid, ADMIN_LOGIN, hash],
   )
 
-  console.log(`[seed] OK — tenant='${SLUG}' (${tid}), 3 itens, admin login='${ADMIN_LOGIN}' papel=gestao`)
+  console.log(
+    `[seed] OK — tenant='${SLUG}' (${tid}), catálogo demo ${catalogoVazio ? 'semeado' : 'pulado'}, admin login='${ADMIN_LOGIN}' papel=gestao`,
+  )
   await pool.end()
 }
 

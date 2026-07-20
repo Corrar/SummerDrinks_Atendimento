@@ -48,8 +48,10 @@ const putConfigSchema = z
     locais: z.array(localSchema).max(50),
     telefone: z.string().max(30),
     whatsapp: z.string().max(30),
-    email: z.string().max(120),
-    instagram: z.string().max(60),
+    // default('') = tolerância a bundle antigo do painel durante deploy
+    // dessincronizado (o PUT antigo não manda os campos novos).
+    email: z.string().max(120).default(''),
+    instagram: z.string().max(60).default(''),
     version: z.number().int().nonnegative(),
   })
   .strict()

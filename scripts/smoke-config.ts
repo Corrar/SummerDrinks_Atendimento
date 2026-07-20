@@ -1,7 +1,8 @@
 // smoke-config.ts — gate do configRouter contra Neon. Fluxo: GET /config lê a config
 // do seed (com version) → PUT com version correta bump v+1 → PUT com version velha = 409
-// → GET público /public/:tenant/config devolve horarios+locais SEM telefone/whatsapp
-// (invariante de PII) → restaura a config original. Re-executável. process.exit(1) em falha.
+// → GET público /public/:tenant/config devolve a allowlist exata
+// { horarios, locais, contato:{telefone,whatsapp,email,instagram} } (contato COMERCIAL;
+// nunca version nem PII de cliente) → restaura a config original. Re-executável.
 import { pool } from '../src/db/pool.js'
 import { env } from '../src/config/env.js'
 
@@ -47,6 +48,8 @@ interface ConfigResp {
   locais: unknown[]
   telefone: string
   whatsapp: string
+  email: string
+  instagram: string
   version: number
 }
 
@@ -86,11 +89,20 @@ async function main(): Promise<void> {
     locais: inicial.locais,
     telefone: inicial.telefone,
     whatsapp: inicial.whatsapp,
+    email: inicial.email ?? '',
+    instagram: inicial.instagram ?? '',
   }
 
   // 2) PUT com version correta → v+1
   console.log('[2] PUT /config version correta → bump')
-  const novo = { ...original, telefone: '1140028922', whatsapp: '11999998888', version: v0 }
+  const novo = {
+    ...original,
+    telefone: '1140028922',
+    whatsapp: '11999998888',
+    email: 'smoke@summerdrinks.com.br',
+    instagram: '@smoke',
+    version: v0,
+  }
   const p1 = await putConfig(auth, novo)
   assert(p1.http === 200 && p1.version === v0 + 1, `PUT → 200 v${v0 + 1} (HTTP ${p1.http} v${p1.version})`)
 
@@ -99,12 +111,19 @@ async function main(): Promise<void> {
   const pConf = await putConfig(auth, { ...novo, version: v0 })
   assert(pConf.http === 409 && pConf.codigo === 'CONFLITO_VERSAO', `409 CONFLITO_VERSAO (HTTP ${pConf.http} ${pConf.codigo})`)
 
-  // 4) INVARIANTE PII: público não devolve contato
-  console.log('[4] GET público /config — sem PII')
+  // 4) CONTRATO da borda pública: allowlist exata com contato comercial aninhado
+  console.log('[4] GET público /config — allowlist exata')
   const pub = await getPublicoConfig()
-  assert('horarios' in pub && 'locais' in pub, 'público tem horarios+locais')
-  assert(!('telefone' in pub), 'público NÃO tem telefone')
-  assert(!('whatsapp' in pub), 'público NÃO tem whatsapp')
+  assert(
+    Object.keys(pub).sort().join(',') === 'contato,horarios,locais',
+    `público tem exatamente contato+horarios+locais (veio: ${Object.keys(pub).sort().join(',')})`,
+  )
+  const contato = (pub.contato ?? {}) as Record<string, unknown>
+  assert(
+    Object.keys(contato).sort().join(',') === 'email,instagram,telefone,whatsapp',
+    'contato tem exatamente email+instagram+telefone+whatsapp',
+  )
+  assert(contato.whatsapp === novo.whatsapp, 'contato.whatsapp reflete o PUT do passo [2]')
   assert(!('version' in pub), 'público NÃO tem version')
 
   // 5) restaura a config original (bumpando a version atual)

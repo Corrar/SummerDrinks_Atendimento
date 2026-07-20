@@ -3,10 +3,13 @@
 // a partir daqui o catálogo do servidor é a ÚNICA fonte de verdade do cardápio
 // (o app consome GET /public/:tenant/menu; a lista estática foi removida do app).
 //
-// Reexecutável (ON CONFLICT upsert). Também remove os 3 itens de demonstração
-// criados por scripts/seed.ts (gate da Fase 1), que não fazem parte do cardápio
-// real. IDs são slugs estáveis do nome: NUNCA renomeie um id já publicado —
-// o app referencia itens por `id__idx` (ver guard append-only em catalogo.ts).
+// Reexecutável com segurança: INSERT ... ON CONFLICT DO NOTHING — itens que já
+// existem são PRESERVADOS (o painel é a fonte de verdade após o primeiro seed;
+// nunca sobrescrevemos edições da gestão nem encolhemos `tamanhos`, o que
+// invalidaria refs posicionais `id__idx` já publicadas — mesmo guard do 409
+// TAMANHOS_SHRINK de catalogo.ts). Também remove os 3 itens de demonstração
+// do seed da Fase 1. IDs são slugs estáveis do nome: NUNCA renomeie um id já
+// publicado.
 import { pool } from '../src/db/pool.js'
 
 const SLUG = 'summer'
@@ -158,18 +161,22 @@ async function main(): Promise<void> {
   const dup = ids.find((id, i) => ids.indexOf(id) !== i)
   if (dup) throw new Error(`id duplicado no cardápio do seed: '${dup}'`)
 
+  // DO NOTHING, não DO UPDATE: depois do primeiro seed a fonte de verdade é o
+  // painel (Cardápio). Um DO UPDATE aqui reverteria edições da gestão e — pior —
+  // ENCOLHERIA `tamanhos` de itens que ganharam um 2º tamanho pelo painel,
+  // invalidando refs posicionais `id__idx` já publicadas no menu (o PUT
+  // /catalogo recusa exatamente isso com 409 TAMANHOS_SHRINK; o seed não pode
+  // contornar o guard por SQL direto).
   let ordem = 0
-  let upserts = 0
+  let inseridos = 0
+  let existentes = 0
   for (const categoria of CARDAPIO) {
     for (const item of categoria.items) {
       ordem += 1
-      await pool.query(
+      const r = await pool.query(
         `INSERT INTO catalogo_item (tenant_id, id, cat, nome, descricao, tamanhos, img, ordem)
            VALUES ($1, $2, $3, $4, $5, $6::jsonb, '', $7)
-         ON CONFLICT (tenant_id, id) DO UPDATE
-           SET cat = EXCLUDED.cat, nome = EXCLUDED.nome, descricao = EXCLUDED.descricao,
-               tamanhos = EXCLUDED.tamanhos, ordem = EXCLUDED.ordem,
-               atualizado_em = now()`,
+         ON CONFLICT (tenant_id, id) DO NOTHING`,
         [
           tid,
           slug(item.nome),
@@ -180,7 +187,8 @@ async function main(): Promise<void> {
           ordem,
         ],
       )
-      upserts += 1
+      if (r.rowCount) inseridos += 1
+      else existentes += 1
     }
   }
 
@@ -198,7 +206,9 @@ async function main(): Promise<void> {
     console.log(`[seed-menu] mantidos ${extras.rows.length} itens fora do seed: ${extras.rows.map((r) => r.id).join(', ')}`)
   }
 
-  console.log(`[seed-menu] OK — ${upserts} itens do cardápio real, ${demo.rowCount ?? 0} demo removidos (tenant='${SLUG}')`)
+  console.log(
+    `[seed-menu] OK — ${inseridos} itens inseridos, ${existentes} já existiam (preservados), ${demo.rowCount ?? 0} demo removidos (tenant='${SLUG}')`,
+  )
   await pool.end()
 }
 

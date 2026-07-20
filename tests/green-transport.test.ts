@@ -128,8 +128,11 @@ describe('criarTransporte', () => {
       expect(criarTransporte('green')).toBeInstanceOf(GreenApiTransport)
       expect(criarTransporte('fake')).toBeInstanceOf(FakeTransport)
     } finally {
-      process.env.GREEN_API_ID_INSTANCE = backup.GREEN_API_ID_INSTANCE
-      process.env.GREEN_API_TOKEN = backup.GREEN_API_TOKEN
+      // atribuir undefined gravaria a string 'undefined' — restaurar via delete.
+      if (backup.GREEN_API_ID_INSTANCE === undefined) delete process.env.GREEN_API_ID_INSTANCE
+      else process.env.GREEN_API_ID_INSTANCE = backup.GREEN_API_ID_INSTANCE
+      if (backup.GREEN_API_TOKEN === undefined) delete process.env.GREEN_API_TOKEN
+      else process.env.GREEN_API_TOKEN = backup.GREEN_API_TOKEN
     }
   })
 })

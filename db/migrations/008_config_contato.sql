@@ -7,3 +7,12 @@
 -- proibida em qualquer rota pública (ver SECURITY-BORDA.md).
 ALTER TABLE config ADD COLUMN IF NOT EXISTS email     text NOT NULL DEFAULT '';
 ALTER TABLE config ADD COLUMN IF NOT EXISTS instagram text NOT NULL DEFAULT '';
+
+-- CONSENTIMENTO: até esta migration, telefone/whatsapp eram rotulados no painel
+-- como "interno da gestão — NUNCA saem na borda pública". Publicá-los sem ação
+-- do operador exporia dados cadastrados sob a promessa antiga (ex.: número
+-- pessoal do gestor). Zeramos os valores pré-existentes: a gestão recadastra os
+-- canais PÚBLICOS conscientemente no painel (agora rotulado "Contato público do
+-- bar"). O runner (migrate.ts) aplica cada arquivo exatamente uma vez — este
+-- UPDATE não re-executa sobre valores recadastrados.
+UPDATE config SET telefone = '', whatsapp = '';
