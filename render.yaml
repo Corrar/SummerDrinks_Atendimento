@@ -36,10 +36,19 @@ services:
         value: "900"
       - key: CORS_ORIGINS
         sync: false        # https://summer-drinks-cliente.vercel.app (domínio do PWA)
+      # WhatsApp real: troque NOTIF_DRIVER p/ 'green' e preencha as GREEN_API_*
+      # no dashboard (instância + token da green-api.com). Com 'fake' nada é
+      # enviado (o env.ts recusa 'green' sem credenciais no boot).
       - key: NOTIF_DRIVER
-        value: fake        # troca p/ 'green' quando GreenApiTransport real chegar
+        value: fake
       - key: NOTIF_WORKER
         value: "true"
+      - key: GREEN_API_BASE_URL
+        value: https://api.green-api.com   # ou a URL da SUA instância (ex.: https://1103.api.green-api.com)
+      - key: GREEN_API_ID_INSTANCE
+        sync: false        # idInstance da instância Green API
+      - key: GREEN_API_TOKEN
+        sync: false        # apiTokenInstance — segredo, só no dashboard
       - key: SEED_ADMIN_SENHA
         sync: false        # senha do admin (usada só por scripts/seed local)
       - key: PUBLIC_RATE_PEDIDO_MAX

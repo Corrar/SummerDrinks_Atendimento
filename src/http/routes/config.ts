@@ -1,9 +1,10 @@
 // Rotas de CONFIG (horários/locais/contatos), sob a fronteira de auth. 1 linha por
-// tenant. GET (gestão/pdv/painel) devolve a config COMPLETA — inclui telefone/whatsapp
-// (PII de contato) porque é rota autenticada — mais `version` para eco no PUT. PUT
-// (gestão-only) faz upsert com concorrência otimista (espelha 005/painel_estado).
-// A borda PÚBLICA (public.ts) expõe SÓ horarios+locais — nunca telefone/whatsapp.
-// Emit 'config:updated' na sala privada SEM PII (só horarios/locais/version).
+// tenant. GET (gestão/pdv/painel) devolve a config COMPLETA mais `version` para eco
+// no PUT. PUT (gestão-only) faz upsert com concorrência otimista (espelha 005).
+// Contato (telefone/whatsapp/email/instagram) é o contato COMERCIAL do tenant e a
+// borda PÚBLICA (public.ts) o publica deliberadamente junto de horarios+locais —
+// PII de CLIENTE continua proibida em /public/*. Emit 'config:updated' na sala
+// privada só com horarios/locais/version (payload mínimo; o painel refetch o resto).
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import { pool } from '../../db/pool.js'
@@ -47,11 +48,13 @@ const putConfigSchema = z
     locais: z.array(localSchema).max(50),
     telefone: z.string().max(30),
     whatsapp: z.string().max(30),
+    email: z.string().max(120),
+    instagram: z.string().max(60),
     version: z.number().int().nonnegative(),
   })
   .strict()
 
-const SEL = 'horarios, locais, telefone, whatsapp, version'
+const SEL = 'horarios, locais, telefone, whatsapp, email, instagram, version'
 
 // GET /config — config completa da gestão (inclui PII de contato; rota autenticada).
 // Sem linha ainda → default vazio v0 (o PUT com version=0 então cria).
@@ -64,7 +67,8 @@ configRouter.get(
       [req.auth!.tenant],
     )
     const row =
-      r.rows[0] ?? { horarios: [], locais: [], telefone: '', whatsapp: '', version: 0 }
+      r.rows[0] ??
+      { horarios: [], locais: [], telefone: '', whatsapp: '', email: '', instagram: '', version: 0 }
     res.json(row)
   }),
 )
@@ -77,19 +81,19 @@ configRouter.put(
   validarBody(putConfigSchema),
   asy(async (req, res) => {
     const tenant = req.auth!.tenant
-    const { horarios, locais, telefone, whatsapp, version } = req.body as z.infer<
-      typeof putConfigSchema
-    >
+    const { horarios, locais, telefone, whatsapp, email, instagram, version } =
+      req.body as z.infer<typeof putConfigSchema>
 
     const r = await pool.query<Config>(
-      `INSERT INTO config (tenant_id, horarios, locais, telefone, whatsapp, version, atualizado_em)
-         VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, 1, now())
+      `INSERT INTO config (tenant_id, horarios, locais, telefone, whatsapp, email, instagram, version, atualizado_em)
+         VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, 1, now())
        ON CONFLICT (tenant_id) DO UPDATE
          SET horarios = $2::jsonb, locais = $3::jsonb, telefone = $4, whatsapp = $5,
+             email = $6, instagram = $7,
              version = config.version + 1, atualizado_em = now()
-         WHERE config.version = $6
+         WHERE config.version = $8
        RETURNING ${SEL}`,
-      [tenant, JSON.stringify(horarios), JSON.stringify(locais), telefone, whatsapp, version],
+      [tenant, JSON.stringify(horarios), JSON.stringify(locais), telefone, whatsapp, email, instagram, version],
     )
     const row = r.rows[0]
     if (!row) {
@@ -100,7 +104,8 @@ configRouter.put(
       throw new ConflitoVersao(atual.rows[0] ?? null)
     }
 
-    // Painel autenticado sincroniza — SEM PII (telefone/whatsapp fora do emit).
+    // Painel autenticado sincroniza — payload mínimo (contato fica de fora;
+    // quem precisar da config completa refetch a rota GET).
     emitir(tenant, 'config:updated', {
       horarios: row.horarios,
       locais: row.locais,

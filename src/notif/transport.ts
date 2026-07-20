@@ -4,9 +4,10 @@
 //  - Nenhum erro cru de HTTP client escapa daqui — todo throw é reempacotado
 //    em TransportError com um `safeCode` sem PII (nunca telefone, nunca a URL
 //    do Green API com token no path, nunca o corpo da requisição).
-//  - `idempotencyKey` é passada ao provedor para dedup (Green API tem window
-//    de deduplicação ~24h por chave). Vem construída pelo worker; nunca reutiliza
-//    valor após TRUNCATE RESTART IDENTITY (inclui `criado_em` epoch).
+//  - `idempotencyKey` identifica a intenção de envio (construída pelo worker;
+//    nunca reutiliza valor após TRUNCATE RESTART IDENTITY — inclui `criado_em`
+//    epoch). Provedores que aceitam chave de dedup devem repassá-la; a Green API
+//    não aceita, então a dedup real fica no claim do outbox (SKIP LOCKED).
 
 export interface MensagemNotificacao {
   telefone: string
@@ -39,6 +40,75 @@ export class TransportError extends Error {
   ) {
     super(safeCode) // message = code; nunca eco de request
     this.name = 'TransportError'
+  }
+}
+
+// ---------- GreenApiTransport — WhatsApp via Green API ----------
+// POST {baseUrl}/waInstance{idInstance}/sendMessage/{token}
+//   body { chatId: '<numero>@c.us', message: texto }
+// O token viaja no PATH da URL (contrato da Green API) — por isso NENHUM erro
+// daqui pode ecoar a URL: só safeCode. A Green API não aceita chave de
+// idempotência no sendMessage; a dedup fica no outbox (claim SKIP LOCKED +
+// pré-avanço de backoff), com janela pequena de duplicata em crash entre
+// envio e settle — aceitável para notificação de status.
+
+export interface GreenApiOpts {
+  baseUrl: string
+  idInstance: string
+  token: string
+  timeoutMs?: number
+  /** Injetável nos testes; default = fetch global. */
+  fetchImpl?: typeof fetch
+}
+
+/** Só dígitos; número BR sem DDI (10-11 dígitos) ganha '55'. Curto demais → null. */
+export function normalizarTelefoneBr(telefone: string): string | null {
+  const d = telefone.replace(/\D/g, '').replace(/^0+/, '')
+  if (d.length < 10) return null
+  if (d.length <= 11) return `55${d}`
+  return d
+}
+
+export class GreenApiTransport implements NotificationTransport {
+  readonly nome = 'green'
+  private readonly url: string
+  private readonly timeoutMs: number
+  private readonly fetchImpl: typeof fetch
+
+  constructor(opts: GreenApiOpts) {
+    this.url = `${opts.baseUrl.replace(/\/+$/, '')}/waInstance${opts.idInstance}/sendMessage/${opts.token}`
+    this.timeoutMs = opts.timeoutMs ?? 10_000
+    this.fetchImpl = opts.fetchImpl ?? fetch
+  }
+
+  async enviar(msg: MensagemNotificacao): Promise<void> {
+    const numero = normalizarTelefoneBr(msg.telefone)
+    if (!numero) throw new TransportError(false, 'invalid_phone')
+
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), this.timeoutMs)
+    let resp: Response
+    try {
+      resp = await this.fetchImpl(this.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: `${numero}@c.us`, message: msg.texto }),
+        signal: ac.signal,
+      })
+    } catch (e) {
+      // Timeout/abort e falha de rede são transitórios; o resto é bug → não retenta.
+      if (e instanceof Error && e.name === 'AbortError') throw new TransportError(true, 'timeout')
+      if (e instanceof TypeError) throw new TransportError(true, 'network')
+      throw new TransportError(false, 'unknown')
+    } finally {
+      clearTimeout(timer)
+    }
+
+    if (resp.ok) return
+    if (resp.status === 429) throw new TransportError(true, 'http_429')
+    if (resp.status >= 500) throw new TransportError(true, `http_${resp.status}`)
+    // 4xx ≠ 429: payload/credencial errada — retentar só repetiria o erro.
+    throw new TransportError(false, `http_${resp.status}`)
   }
 }
 

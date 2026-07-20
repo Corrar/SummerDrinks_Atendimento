@@ -1,7 +1,8 @@
 // Unit tests do configRouter + GET público de config — SEM banco. Mocka pool.query e emit.
 // Cobre RBAC (PUT gestão-only), zod strict (horario/local/chave extra), upsert OK (200),
-// conflito de versão (409) e a INVARIANTE de PII: /public/:tenant/config nunca devolve
-// telefone/whatsapp.
+// conflito de versão (409) e o CONTRATO da borda pública: /public/:tenant/config devolve
+// exatamente horarios+locais+contato comercial (allowlist) — nunca `version` nem
+// qualquer PII de cliente.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
@@ -28,6 +29,8 @@ const bodyOk = {
   locais: [{ id: 'sede', nome: 'Summer Sede', endereco: '', ativo: true }],
   telefone: '1140028922',
   whatsapp: '11999998888',
+  email: 'contato@summerdrinks.com.br',
+  instagram: '@summerdrinks',
   version: 0,
 }
 
@@ -100,20 +103,40 @@ describe('config — upsert e concorrência', () => {
   })
 })
 
-describe('config pública — invariante de PII', () => {
-  it('GET /public/:tenant/config devolve só horarios+locais (sem contato)', async () => {
+describe('config pública — contrato da borda', () => {
+  it('GET /public/:tenant/config devolve allowlist exata: horarios+locais+contato', async () => {
     vi.mocked(pool.query)
       .mockResolvedValueOnce({ rows: [{ id: TENANT }], rowCount: 1 } as never) // tenantIdPorSlug
       .mockResolvedValueOnce({
-        rows: [{ horarios: bodyOk.horarios, locais: bodyOk.locais }],
+        rows: [{
+          horarios: bodyOk.horarios,
+          locais: bodyOk.locais,
+          telefone: bodyOk.telefone,
+          whatsapp: bodyOk.whatsapp,
+          email: bodyOk.email,
+          instagram: bodyOk.instagram,
+        }],
         rowCount: 1,
       } as never)
     const r = await request(app).get('/public/summer/config')
     expect(r.status).toBe(200)
-    expect(r.body).toHaveProperty('horarios')
-    expect(r.body).toHaveProperty('locais')
-    expect(r.body).not.toHaveProperty('telefone')
-    expect(r.body).not.toHaveProperty('whatsapp')
+    // Allowlist exata: nada além destas chaves sai na borda pública.
+    expect(Object.keys(r.body).sort()).toEqual(['contato', 'horarios', 'locais'])
+    expect(Object.keys(r.body.contato).sort()).toEqual(['email', 'instagram', 'telefone', 'whatsapp'])
+    expect(r.body.contato.whatsapp).toBe(bodyOk.whatsapp)
     expect(r.body).not.toHaveProperty('version')
+  })
+
+  it('GET /public/:tenant/config sem linha de config → defaults vazios', async () => {
+    vi.mocked(pool.query)
+      .mockResolvedValueOnce({ rows: [{ id: TENANT }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+    const r = await request(app).get('/public/summer/config')
+    expect(r.status).toBe(200)
+    expect(r.body).toEqual({
+      horarios: [],
+      locais: [],
+      contato: { telefone: '', whatsapp: '', email: '', instagram: '' },
+    })
   })
 })

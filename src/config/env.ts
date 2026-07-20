@@ -16,12 +16,26 @@ const schema = z.object({
   // Senha do usuário admin semeado (scripts/seed.ts). Opcional: só o seed exige.
   SEED_ADMIN_SENHA: z.string().min(8).max(200).optional(),
   // Transporte de notificação do worker de outbox. 'fake' = in-memory (dev/test).
-  // 'green' hoje = stub (mesmo comportamento do fake) até o adapter real de Green API.
+  // 'green' = GreenApiTransport real (WhatsApp) — exige as GREEN_API_* abaixo.
   NOTIF_DRIVER: z.enum(['fake', 'green']).default('fake'),
   // Se 'true', o server sobe o OutboxWorker em background. Default true em dev,
   // false em test (evita picos de I/O concorrentes com vitest).
   NOTIF_WORKER: z.enum(['true', 'false']).optional(),
+  // Green API (WhatsApp). BASE_URL aceita a URL da instância (ex.: https://1103.api.green-api.com).
+  GREEN_API_BASE_URL: z.string().url().default('https://api.green-api.com'),
+  GREEN_API_ID_INSTANCE: z.string().min(1).optional(),
+  GREEN_API_TOKEN: z.string().min(1).optional(),
 })
+  .superRefine((v, ctx) => {
+    // Fail-fast no boot: driver real sem credencial derrubaria só o worker em runtime.
+    if (v.NOTIF_DRIVER === 'green' && (!v.GREEN_API_ID_INSTANCE || !v.GREEN_API_TOKEN)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['GREEN_API_ID_INSTANCE'],
+        message: 'NOTIF_DRIVER=green exige GREEN_API_ID_INSTANCE e GREEN_API_TOKEN',
+      })
+    }
+  })
 
 const parsed = schema.safeParse(process.env)
 if (!parsed.success) {

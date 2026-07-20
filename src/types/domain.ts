@@ -76,8 +76,13 @@ export interface Local {
 export interface Config {
   horarios: Horario[]
   locais: Local[]
-  telefone: string // PII de contato — NUNCA em /public/*
-  whatsapp: string // idem
+  // Contato COMERCIAL do tenant — publicado deliberadamente na borda pública
+  // (aba Contato do app do cliente). Não confundir com PII de cliente
+  // (agenda.telefone/email), que nunca sai em /public/*.
+  telefone: string
+  whatsapp: string
+  email: string
+  instagram: string
   version: number
 }
 

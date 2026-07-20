@@ -17,8 +17,9 @@ const SEMANA = [
  * Config — horários semanais, locais e contato. O PUT substitui a config
  * INTEIRA com version lock: em 409 (outro operador salvou antes) recarrega e
  * pede para reaplicar — sem merge silencioso de um replace total.
- * O que sai na borda pública: horarios+locais (o app deriva Aberto/Fechado
- * e endereço). telefone/whatsapp são PII comercial: só aqui na gestão.
+ * O que sai na borda pública: horarios+locais (Aberto/Fechado e endereço) e o
+ * contato COMERCIAL (telefone/whatsapp/email/instagram) — a aba Contato do app
+ * do cliente exibe estes canais. Preencha com os dados públicos do bar.
  */
 export function Config({ ativo }) {
   const [form, setForm] = useState(null);     // {horarios, locais, telefone, whatsapp, version}
@@ -71,6 +72,8 @@ export function Config({ ativo }) {
         locais: form.locais,
         telefone: form.telefone || '',
         whatsapp: form.whatsapp || '',
+        email: form.email || '',
+        instagram: form.instagram || '',
         version: form.version,
       });
       setForm(salvo);
@@ -198,7 +201,7 @@ export function Config({ ativo }) {
 
       {/* contato */}
       <div style={card}>
-        <div style={titulo}>Contato (interno da gestão)</div>
+        <div style={titulo}>Contato público do bar</div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <label style={{ flex: 1, minWidth: '200px' }}>
             <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>TELEFONE</span>
@@ -208,9 +211,17 @@ export function Config({ ativo }) {
             <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>WHATSAPP</span>
             <input value={form.whatsapp || ''} onChange={(e) => mutar({ whatsapp: e.target.value })} placeholder="(81) 9 9999-0000" style={{ ...inputStyle, width: '100%' }} />
           </label>
+          <label style={{ flex: 1, minWidth: '200px' }}>
+            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>E-MAIL</span>
+            <input value={form.email || ''} onChange={(e) => mutar({ email: e.target.value })} placeholder="contato@summerdrinks.com.br" style={{ ...inputStyle, width: '100%' }} />
+          </label>
+          <label style={{ flex: 1, minWidth: '200px' }}>
+            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>INSTAGRAM</span>
+            <input value={form.instagram || ''} onChange={(e) => mutar({ instagram: e.target.value })} placeholder="@summerdrinks" style={{ ...inputStyle, width: '100%' }} />
+          </label>
         </div>
         <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
-          Estes contatos NUNCA saem na borda pública — ficam só na gestão (o app do cliente usa os contatos fixos do próprio app).
+          Estes canais aparecem na aba Contato do app do cliente (atualiza em até 1 minuto). Use apenas os dados PÚBLICOS do bar — nunca contatos pessoais.
         </div>
       </div>
     </div>

@@ -107,19 +107,31 @@ publicRouter.get(
   }),
 )
 
-// ---------- CONFIG pública: SÓ horarios + locais (NUNCA telefone/whatsapp) ----------
-// Contato é PII comercial e fica só no GET autenticado da gestão (ver config.ts).
+// ---------- CONFIG pública: horarios + locais + contato COMERCIAL ----------
+// telefone/whatsapp/email/instagram aqui são os canais PÚBLICOS do bar (a aba
+// Contato do app precisa deles para o cliente chamar o trailer) — publicados
+// deliberadamente; a gestão edita no painel. PII de CLIENTE (agenda.telefone/
+// email) continua proibida em qualquer rota pública. `version` não sai.
 publicRouter.get(
   '/public/:tenant/config',
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
-    const r = await pool.query<{ horarios: unknown; locais: unknown }>(
-      `SELECT horarios, locais FROM config WHERE tenant_id=$1`,
+    const r = await pool.query<{ horarios: unknown; locais: unknown; telefone: string; whatsapp: string; email: string; instagram: string }>(
+      `SELECT horarios, locais, telefone, whatsapp, email, instagram FROM config WHERE tenant_id=$1`,
       [tid],
     )
     const row = r.rows[0]
     res.setHeader('Cache-Control', 'public, max-age=60')
-    res.json({ horarios: row?.horarios ?? [], locais: row?.locais ?? [] })
+    res.json({
+      horarios: row?.horarios ?? [],
+      locais: row?.locais ?? [],
+      contato: {
+        telefone: row?.telefone ?? '',
+        whatsapp: row?.whatsapp ?? '',
+        email: row?.email ?? '',
+        instagram: row?.instagram ?? '',
+      },
+    })
   }),
 )
 
