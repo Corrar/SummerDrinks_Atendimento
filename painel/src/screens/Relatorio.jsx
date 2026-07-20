@@ -13,11 +13,12 @@ const PERIODOS = [
 
 const PAG_COR = { Pix: '#7cc142', 'Cartão': '#4aa8d8', Dinheiro: '#f5a623' };
 
-/** Relatório — KPIs, breakdown por pagamento, mais vendidos e barras por dia. */
+/** Relatório — KPIs, breakdown por pagamento, mais vendidos, barras por dia e avaliações. */
 export function Relatorio({ ativo }) {
   const [periodo, setPeriodo] = useState('7d');
   const [custom, setCustom] = useState(null);       // {de, ate} quando período custom
   const [dados, setDados] = useState(null);
+  const [aval, setAval] = useState(null);           // feedback dos clientes no período
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
 
@@ -34,6 +35,10 @@ export function Relatorio({ ativo }) {
       .then((d) => { if (vivo) { setDados(d); setErro(null); } })
       .catch((e) => { if (vivo) setErro(e); })
       .finally(() => { if (vivo) setCarregando(false); });
+    // Avaliações são complemento: falha aqui não derruba o relatório.
+    api.avaliacoes(faixa.de, faixa.ate)
+      .then((a) => { if (vivo) setAval(a); })
+      .catch(() => { if (vivo) setAval(null); });
     return () => { vivo = false; };
   }, [ativo, faixa.de, faixa.ate]);
 
@@ -82,6 +87,9 @@ export function Relatorio({ ativo }) {
             <Kpi rotulo="Ticket médio" valor={brl(dados.ticketMedio)} cor="var(--fg)" />
             <Kpi rotulo="A receber (não pago)" valor={brl(dados.aReceber)} cor={dados.aReceber > 0 ? '#e23b3b' : 'var(--accent2)'} />
             <Kpi rotulo="Eventos aceitos" valor={`${dados.eventos.qtd} · ${brl(dados.eventos.receita)}`} cor="#4aa8d8" />
+            {aval && aval.qtd > 0 && (
+              <Kpi rotulo="Avaliação média" valor={`★ ${aval.media?.toFixed(1)} · ${aval.qtd}`} cor="#f5a623" />
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', alignItems: 'start' }}>
@@ -127,6 +135,36 @@ export function Relatorio({ ativo }) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* avaliações dos clientes (feedback do app) */}
+          <div style={card}>
+            <div style={tituloCard}>Avaliações dos clientes</div>
+            {!aval || aval.qtd === 0 ? (
+              <Vazio texto="Nenhuma avaliação no período." />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {aval.avaliacoes.map((a, i) => (
+                  <div key={`${a.dia}-${a.senha}-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                    <span style={{ fontSize: '15px', letterSpacing: '2px', color: '#f5a623', flex: '0 0 auto' }} title={`${a.nota}/5`}>
+                      {'★'.repeat(a.nota)}
+                      <span style={{ color: 'var(--border)' }}>{'★'.repeat(5 - a.nota)}</span>
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {a.comentario ? (
+                        <div style={{ fontSize: '13px', lineHeight: 1.45, color: 'var(--fg)' }}>{a.comentario}</div>
+                      ) : (
+                        <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Sem comentário.</div>
+                      )}
+                      <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '3px' }}>
+                        Senha {a.senha} · {new Date(a.dia + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        {a.cliente ? ` · ${a.cliente}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* mais vendidos */}

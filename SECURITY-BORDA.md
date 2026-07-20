@@ -13,6 +13,7 @@ chega como hostil. Este documento é o gate de segurança da integração.
 | `/public/:tenant/pedido/:token` | GET | token opaco | `{senha,status,hora,pago}` |
 | `/public/:tenant/eventos` | POST | formulário completo | `{protocolo}` |
 | `/public/:tenant/agenda/:protocolo` | GET | protocolo `SD-XXXXXX` | `{status,data,hora,valor,motivo_recusa}` (sem PII) |
+| `/public/:tenant/pedido/:token/avaliacao` | POST | `{nota:1..5, comentario?}` | `{ok:true}` (token = prova de posse; só pedido entregue; 1 por pedido) |
 
 ## Controles por ameaça (OWASP)
 
@@ -60,6 +61,8 @@ chega como hostil. Este documento é o gate de segurança da integração.
 - [ ] `slug` inexistente → **404** genérico.
 - [ ] Origem fora da allowlist de CORS → bloqueada.
 - [ ] Payload > 32 kb → **413**.
+- [ ] Avaliação: nota fora de 1..5 → **400**; pedido não entregue → **409**;
+      segunda avaliação do mesmo token → **409**; comentário passa por `semHtml`.
 
 ## Pendências de segurança herdadas do ecossistema
 - Rotacionar qualquer credencial exposta em chat (padrão Royale).

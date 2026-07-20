@@ -30,6 +30,9 @@ export default defineConfig({
       JWT_SECRET: process.env.JWT_SECRET ?? 'segredo-de-teste-com-mais-de-32-caracteres-ok',
       JWT_EXP_SEGUNDOS: '900',
       CORS_ORIGINS: '',
+      // Os testes exercitam a mesma rota várias vezes — sem folga aqui o
+      // rate limit da borda (10/min) derrubaria os últimos asserts com 429.
+      PUBLIC_RATE_AVALIACAO_MAX: '1000',
     },
     hookTimeout: 20_000,
     testTimeout: 20_000,

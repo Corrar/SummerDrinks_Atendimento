@@ -16,7 +16,11 @@ import {
   type SlotEvento,
 } from '../types/acl.js'
 import { ErroDominio, type ItemPedido, type Pedido, type StatusPedido } from '../types/domain.js'
-import type { PedidoPublicoInput, EventoPublicoInput } from '../types/schemas-publicos.js'
+import type {
+  PedidoPublicoInput,
+  EventoPublicoInput,
+  AvaliacaoPublicaInput,
+} from '../types/schemas-publicos.js'
 
 interface LinhaCatalogo {
   id: string
@@ -174,6 +178,39 @@ export const EdgeIngestService = {
     })
 
     return { protocolo, id }
+  },
+
+  /**
+   * Registra o feedback do cliente sobre um pedido (nota 1-5 + comentário).
+   * Regras: o token opaco é a prova de posse do pedido; só pedido ENTREGUE pode
+   * ser avaliado (fail-closed); no máximo UMA avaliação por pedido (PK por
+   * token — segundo POST → 409). Devolve a senha para o emit do painel.
+   */
+  async ingestAvaliacao(
+    tenantId: string,
+    token: string,
+    input: AvaliacaoPublicaInput,
+  ): Promise<{ senha: number; nota: number }> {
+    const p = await pool.query<{ senha: number; status: StatusPedido }>(
+      `SELECT senha, status FROM pedido WHERE tenant_id = $1 AND token = $2::uuid`,
+      [tenantId, token],
+    )
+    const pedido = p.rows[0]
+    if (!pedido) throw new ErroDominio('PEDIDO_NAO_ENCONTRADO', 'Pedido não encontrado.', 404)
+    if (pedido.status !== 'entregue') {
+      throw new ErroDominio('PEDIDO_NAO_ENTREGUE', 'Avalie após retirar o pedido.', 409)
+    }
+
+    const ins = await pool.query(
+      `INSERT INTO avaliacao (tenant_id, token, nota, comentario)
+         VALUES ($1, $2::uuid, $3, $4)
+       ON CONFLICT (tenant_id, token) DO NOTHING`,
+      [tenantId, token, input.nota, input.comentario],
+    )
+    if (!ins.rowCount) {
+      throw new ErroDominio('AVALIACAO_EXISTENTE', 'Este pedido já foi avaliado.', 409)
+    }
+    return { senha: pedido.senha, nota: input.nota }
   },
 
   /**

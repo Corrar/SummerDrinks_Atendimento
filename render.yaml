@@ -57,5 +57,7 @@ services:
         value: "5"
       - key: PUBLIC_RATE_AGENDA_STATUS_MAX
         value: "120"
+      - key: PUBLIC_RATE_AVALIACAO_MAX
+        value: "10"
       - key: PUBLIC_RATE_JANELA_MS
         value: "60000"

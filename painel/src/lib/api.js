@@ -160,4 +160,5 @@ export const api = {
   salvarDispo: (iso, dados) => chamar(`/dispo/${iso}`, { method: 'PUT', body: dados }),
   lerConfig: () => chamar('/config'),
   salvarConfig: (dados) => chamar('/config', { method: 'PUT', body: dados }),
+  avaliacoes: (de, ate) => chamar(`/avaliacoes?de=${de}&ate=${ate}`),
 };

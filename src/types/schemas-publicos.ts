@@ -55,6 +55,15 @@ export const eventoPublicoSchema = z.object({
   slot: z.enum(['Tarde', 'Noite', 'Madrugada']),
 })
 
+// ---------- AVALIAÇÃO pública (feedback do pedido) ----------
+// Nota 1-5 + comentário opcional. A "autenticação" é o token opaco do pedido
+// (viaja no path); o servidor exige pedido entregue e deduplica por token.
+export const avaliacaoPublicaSchema = z.object({
+  nota: z.number().int().min(1).max(5),
+  comentario: z.string().max(600).default('').transform(semHtml),
+})
+
 export type ItemPublicoInput = z.infer<typeof itemPublicoSchema>
 export type PedidoPublicoInput = z.infer<typeof pedidoPublicoSchema>
 export type EventoPublicoInput = z.infer<typeof eventoPublicoSchema>
+export type AvaliacaoPublicaInput = z.infer<typeof avaliacaoPublicaSchema>

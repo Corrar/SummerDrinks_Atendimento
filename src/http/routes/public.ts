@@ -6,7 +6,11 @@ import rateLimit from 'express-rate-limit'
 import { pool } from '../../db/pool.js'
 import { emitir } from '../../realtime/io.js'
 import { validarBody } from '../middleware/validate.js'
-import { pedidoPublicoSchema, eventoPublicoSchema } from '../../types/schemas-publicos.js'
+import {
+  pedidoPublicoSchema,
+  eventoPublicoSchema,
+  avaliacaoPublicaSchema,
+} from '../../types/schemas-publicos.js'
 import { encodeRefItem } from '../../types/acl.js'
 import { EdgeIngestService } from '../../services/EdgeIngestService.js'
 import { ErroDominio } from '../../types/domain.js'
@@ -163,6 +167,16 @@ const limiteAgendaPublica = rateLimit({
   message: { erro: 'Muitas consultas. Aguarde um instante.', codigo: 'RATE_LIMIT' },
 })
 
+// Avaliação de pedido: mutação leve, mas ainda mutação — limite próprio.
+const limiteAvaliacao = rateLimit({
+  windowMs: Number(process.env.PUBLIC_RATE_JANELA_MS ?? 60_000),
+  max: Number(process.env.PUBLIC_RATE_AVALIACAO_MAX ?? 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.ip}:${req.params.tenant}:avaliacao`,
+  message: { erro: 'Muitas avaliações. Aguarde um instante.', codigo: 'RATE_LIMIT' },
+})
+
 // ---------- PEDIDO do app → domínio (senha atômica, idempotente) ----------
 publicRouter.post(
   '/public/:tenant/pedidos',
@@ -195,6 +209,25 @@ publicRouter.get(
     const s = await EdgeIngestService.statusPorToken(tid, token)
     res.setHeader('Cache-Control', 'no-store')
     res.json(s)
+  }),
+)
+
+// ---------- AVALIAÇÃO do pedido (nota 1-5 + comentário) ----------
+// O token opaco é a prova de posse: só quem fez o pedido o conhece. O serviço
+// exige status 'entregue' e deduplica por token (1 avaliação por pedido).
+publicRouter.post(
+  '/public/:tenant/pedido/:token/avaliacao',
+  limiteAvaliacao,
+  validarBody(avaliacaoPublicaSchema),
+  asy(async (req, res) => {
+    const tid = await tenantIdPorSlug(String(req.params.tenant))
+    const token = String(req.params.token)
+    if (!/^[0-9a-f-]{36}$/i.test(token)) throw new ErroDominio('TOKEN_INVALIDO', 'Token inválido.', 400)
+    const r = await EdgeIngestService.ingestAvaliacao(tid, token, req.body)
+    // Painel/gestão vê o feedback chegar em tempo real (sala privada; sem comentário
+    // no emit — payload mínimo, o painel refetch a listagem quando quiser).
+    emitir(tid, 'avaliacao:created', { senha: r.senha, nota: r.nota })
+    res.status(201).json({ ok: true })
   }),
 )
 

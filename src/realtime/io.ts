@@ -54,6 +54,7 @@ type EventoPrivado =
   | 'agenda:updated'
   | 'dispo:updated'
   | 'config:updated'
+  | 'avaliacao:created'
 
 /** Emite para a room autenticada do tenant. */
 export function emitir(tenant: string, evento: EventoPrivado, payload: unknown): void {

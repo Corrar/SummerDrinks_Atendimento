@@ -12,6 +12,7 @@ import { catalogoRouter } from './http/routes/catalogo.js'
 import { agendasRouter } from './http/routes/agendas.js'
 import { dispoRouter } from './http/routes/dispo.js'
 import { configRouter } from './http/routes/config.js'
+import { avaliacoesRouter } from './http/routes/avaliacoes.js'
 import { autenticar } from './http/middleware/auth.js'
 import { tratadorErro } from './http/middleware/validate.js'
 
@@ -48,6 +49,7 @@ export function criarApp(): Express {
   app.use(agendasRouter) // /agendas (leitura gestão/pdv/painel; mutações gestão)
   app.use(dispoRouter) // /dispo (base; leitura gestão/pdv/painel; mutações gestão)
   app.use(configRouter) // /config (leitura gestão/pdv/painel; mutações gestão)
+  app.use(avaliacoesRouter) // /avaliacoes (leitura gestão/pdv/painel; escrita só na borda pública)
   // Operação fora do localStorage: pedido+catálogo+dispo+config fechados.
 
   app.use(tratadorErro)
