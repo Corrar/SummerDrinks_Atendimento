@@ -161,4 +161,10 @@ export const api = {
   lerConfig: () => chamar('/config'),
   salvarConfig: (dados) => chamar('/config', { method: 'PUT', body: dados }),
   avaliacoes: (de, ate) => chamar(`/avaliacoes?de=${de}&ate=${ate}`),
+
+  // --- usuários (gestão) ---
+  listarUsuarios: () => chamar('/usuarios'),
+  criarUsuario: (u) => chamar('/usuarios', { method: 'POST', body: u }),
+  atualizarUsuario: (id, patch) => chamar(`/usuarios/${id}`, { method: 'PATCH', body: patch }),
+  excluirUsuario: (id) => chamar(`/usuarios/${id}`, { method: 'DELETE' }),
 };

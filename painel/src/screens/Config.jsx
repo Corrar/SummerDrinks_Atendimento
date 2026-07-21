@@ -61,6 +61,14 @@ export function Config({ ativo }) {
   function removerLocal(id) {
     mutar({ locais: form.locais.filter((l) => l.id !== id) });
   }
+  const ce = () => form.cardapiosEvento || [];
+  function addCardapioEvento() {
+    mutar({ cardapiosEvento: [...ce(), { id: 'ce' + Date.now(), nome: 'Novo cardápio', itens: '' }] });
+  }
+  const setCardapioEvento = (id, patch) => mutar({ cardapiosEvento: ce().map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+  function removerCardapioEvento(id) {
+    mutar({ cardapiosEvento: ce().filter((c) => c.id !== id) });
+  }
 
   async function salvar() {
     if (salvando || !dirty) return;
@@ -74,6 +82,7 @@ export function Config({ ativo }) {
         whatsapp: form.whatsapp || '',
         email: form.email || '',
         instagram: form.instagram || '',
+        cardapiosEvento: form.cardapiosEvento || [],
         version: form.version,
       });
       setForm(salvo);
@@ -223,6 +232,120 @@ export function Config({ ativo }) {
         <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
           Estes canais aparecem na aba Contato do app do cliente (atualiza em até 1 minuto). Use apenas os dados PÚBLICOS do bar — nunca contatos pessoais.
         </div>
+      </div>
+
+      {/* cardápios de evento (open bar) */}
+      <div style={card}>
+        <div style={titulo}>Cardápios de evento</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+          {ce().map((c) => (
+            <div key={c.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <input value={c.nome} onChange={(e) => setCardapioEvento(c.id, { nome: e.target.value })} placeholder="Nome" style={{ ...inputStyle, width: '200px', fontWeight: 800 }} />
+              <input value={c.itens} onChange={(e) => setCardapioEvento(c.id, { itens: e.target.value })} placeholder="Itens (ex.: Caipirinha, Aperol Spritz…)" style={{ ...inputStyle, flex: 1, minWidth: '220px' }} />
+              <button onClick={() => removerCardapioEvento(c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '15px', fontWeight: 800 }} title="Remover">×</button>
+            </div>
+          ))}
+          {ce().length === 0 && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Nenhum cardápio de evento cadastrado.</div>}
+        </div>
+        <button onClick={addCardapioEvento} style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px' }}>
+          + Adicionar cardápio
+        </button>
+        <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
+          Presets de open bar usados no editor da Agenda (não aparecem no app do cliente). Salvos com o botão “Salvar tudo”.
+        </div>
+      </div>
+
+      {/* usuários (operadores) — endpoints próprios, salvam na hora */}
+      <Usuarios />
+    </div>
+  );
+}
+
+const PAPEIS = [
+  { valor: 'gestao', label: 'Admin' },
+  { valor: 'pdv', label: 'Atendente' },
+];
+
+/**
+ * Gestão de operadores (gestão-only). Diferente da config, cada ação salva na
+ * hora nos endpoints /usuarios (senha vira hash bcrypt no servidor; nunca volta).
+ * O backend garante que sempre resta ao menos um admin ativo (409 ULTIMO_ADMIN).
+ */
+function Usuarios() {
+  const [lista, setLista] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [novo, setNovo] = useState({ login: '', senha: '', papel: 'pdv' });
+  const [criando, setCriando] = useState(false);
+
+  async function carregar() {
+    try { setLista(await api.listarUsuarios()); setErro(null); }
+    catch (e) { setErro(e?.message || 'Falha ao carregar usuários.'); }
+  }
+  useEffect(() => { carregar(); }, []);
+
+  async function criar() {
+    if (!novo.login.trim() || !novo.senha || criando) return;
+    setCriando(true);
+    try {
+      await api.criarUsuario({ login: novo.login.trim(), senha: novo.senha, papel: novo.papel });
+      setNovo({ login: '', senha: '', papel: 'pdv' });
+      await carregar();
+    } catch (e) {
+      alert(e?.codigo === 'LOGIN_EM_USO' ? 'Já existe um usuário com este login.' : (e?.message || 'Não foi possível criar.'));
+    } finally { setCriando(false); }
+  }
+  async function acao(fn) {
+    try { await fn(); await carregar(); }
+    catch (e) { alert(e?.codigo === 'ULTIMO_ADMIN' ? 'Deve restar ao menos um administrador ativo.' : (e?.message || 'Não foi possível salvar.')); }
+  }
+  async function trocarSenha(u) {
+    const s = typeof window !== 'undefined' ? window.prompt(`Nova senha para "${u.login}" (mín. 4):`) : null;
+    if (s && s.length >= 4) await acao(() => api.atualizarUsuario(u.id, { senha: s }));
+  }
+
+  const card = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px' };
+  const inputStyle = { padding: '9px 12px', borderRadius: '10px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600 };
+  const titulo = { fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '17px', color: 'var(--fg)', marginBottom: '12px' };
+  const papelPill = (ativo) => ({ cursor: 'pointer', border: 'none', fontSize: '11px', fontWeight: 700, padding: '8px 13px', borderRadius: '999px', whiteSpace: 'nowrap', background: ativo ? 'var(--accent)' : 'var(--surface2)', color: ativo ? 'var(--onAccent)' : 'var(--muted)' });
+
+  return (
+    <div style={card}>
+      <div style={titulo}>Usuários</div>
+      {erro && <div style={{ fontSize: '12.5px', color: '#ff927d', marginBottom: '10px' }}>{erro}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+        {(lista || []).map((u) => (
+          <div key={u.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ flex: 1, minWidth: '140px', fontSize: '14px', fontWeight: 700, color: u.ativo ? 'var(--fg)' : 'var(--muted)' }}>
+              {u.login}{!u.ativo && <span style={{ fontSize: '11px', color: 'var(--muted)' }}> · inativo</span>}
+            </span>
+            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { papel: u.papel === 'gestao' ? 'pdv' : 'gestao' }))} style={papelPill(u.papel === 'gestao')}>
+              {u.papel === 'gestao' ? 'Admin' : 'Atendente'}
+            </button>
+            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { ativo: !u.ativo }))} style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700 }}>
+              {u.ativo ? 'Desativar' : 'Ativar'}
+            </button>
+            <button onClick={() => trocarSenha(u)} style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700 }}>Senha</button>
+            <button onClick={() => acao(() => api.excluirUsuario(u.id))} style={{ border: 'none', background: 'transparent', color: '#e23b3b', fontSize: '11.5px', fontWeight: 800, padding: '7px 6px' }}>Excluir</button>
+          </div>
+        ))}
+        {lista && lista.length === 0 && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Nenhum usuário.</div>}
+        {!lista && !erro && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Carregando…</div>}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+        <input value={novo.login} onChange={(e) => setNovo((n) => ({ ...n, login: e.target.value }))} placeholder="login" style={{ ...inputStyle, width: '150px' }} />
+        <input value={novo.senha} onChange={(e) => setNovo((n) => ({ ...n, senha: e.target.value }))} placeholder="senha" type="password" style={{ ...inputStyle, width: '150px' }} />
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {PAPEIS.map((p) => (
+            <button key={p.valor} onClick={() => setNovo((n) => ({ ...n, papel: p.valor }))} style={papelPill(novo.papel === p.valor)}>{p.label}</button>
+          ))}
+        </div>
+        <button onClick={criar} disabled={criando} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: 'var(--accent2)', color: '#1a1206', fontWeight: 800, fontSize: '13px' }}>
+          {criando ? 'Criando…' : '+ Adicionar'}
+        </button>
+      </div>
+      <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
+        A senha é guardada como hash no servidor (nunca em claro). Sempre resta ao menos um admin ativo.
       </div>
     </div>
   );

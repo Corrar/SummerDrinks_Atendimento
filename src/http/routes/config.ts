@@ -42,6 +42,16 @@ const localSchema = z
   })
   .strict()
 
+// Cardápios de evento (open bar) — presets internos da gestão (nome + itens),
+// usados no editor de Agenda. Não saem na borda pública.
+const cardapioEventoSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    nome: z.string().min(1).max(80),
+    itens: z.string().max(600),
+  })
+  .strict()
+
 const putConfigSchema = z
   .object({
     horarios: z.array(horarioSchema).max(14),
@@ -52,11 +62,13 @@ const putConfigSchema = z
     // dessincronizado (o PUT antigo não manda os campos novos).
     email: z.string().max(120).default(''),
     instagram: z.string().max(60).default(''),
+    cardapiosEvento: z.array(cardapioEventoSchema).max(50).default([]),
     version: z.number().int().nonnegative(),
   })
   .strict()
 
-const SEL = 'horarios, locais, telefone, whatsapp, email, instagram, version'
+// coluna cardapios_evento → chave camelCase cardapiosEvento no JSON.
+const SEL = 'horarios, locais, telefone, whatsapp, email, instagram, cardapios_evento AS "cardapiosEvento", version'
 
 // GET /config — config completa da gestão (inclui PII de contato; rota autenticada).
 // Sem linha ainda → default vazio v0 (o PUT com version=0 então cria).
@@ -70,7 +82,7 @@ configRouter.get(
     )
     const row =
       r.rows[0] ??
-      { horarios: [], locais: [], telefone: '', whatsapp: '', email: '', instagram: '', version: 0 }
+      { horarios: [], locais: [], telefone: '', whatsapp: '', email: '', instagram: '', cardapiosEvento: [], version: 0 }
     res.json(row)
   }),
 )
@@ -83,19 +95,19 @@ configRouter.put(
   validarBody(putConfigSchema),
   asy(async (req, res) => {
     const tenant = req.auth!.tenant
-    const { horarios, locais, telefone, whatsapp, email, instagram, version } =
+    const { horarios, locais, telefone, whatsapp, email, instagram, cardapiosEvento, version } =
       req.body as z.infer<typeof putConfigSchema>
 
     const r = await pool.query<Config>(
-      `INSERT INTO config (tenant_id, horarios, locais, telefone, whatsapp, email, instagram, version, atualizado_em)
-         VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, 1, now())
+      `INSERT INTO config (tenant_id, horarios, locais, telefone, whatsapp, email, instagram, cardapios_evento, version, atualizado_em)
+         VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb, 1, now())
        ON CONFLICT (tenant_id) DO UPDATE
          SET horarios = $2::jsonb, locais = $3::jsonb, telefone = $4, whatsapp = $5,
-             email = $6, instagram = $7,
+             email = $6, instagram = $7, cardapios_evento = $8::jsonb,
              version = config.version + 1, atualizado_em = now()
-         WHERE config.version = $8
+         WHERE config.version = $9
        RETURNING ${SEL}`,
-      [tenant, JSON.stringify(horarios), JSON.stringify(locais), telefone, whatsapp, email, instagram, version],
+      [tenant, JSON.stringify(horarios), JSON.stringify(locais), telefone, whatsapp, email, instagram, JSON.stringify(cardapiosEvento), version],
     )
     const row = r.rows[0]
     if (!row) {

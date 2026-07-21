@@ -83,6 +83,7 @@ export interface Config {
   whatsapp: string
   email: string
   instagram: string
+  cardapiosEvento?: { id: string; nome: string; itens: string }[]
   version: number
 }
 
