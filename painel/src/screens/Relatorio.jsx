@@ -56,10 +56,11 @@ export function Relatorio({ ativo }) {
   const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px 20px' };
   const painelTit = { fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px', marginBottom: '14px' };
 
-  // ---- derivados (a partir dos dados reais) ----
-  const porDia = dados?.porDia ?? [];
+  // ---- derivados (a partir dos dados reais; guarda contra shape inesperado) ----
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const porDia = arr(dados?.porDia);
   const maxDia = porDia.length ? Math.max(...porDia.map((d) => Number(d.total) || 0)) : 0;
-  const pagamentos = (dados?.porPagamento ?? []).map((x) => ({ ...x, cor: PAG_COR[x.pagamento] || '#a99a83' }));
+  const pagamentos = arr(dados?.porPagamento).map((x) => ({ ...x, cor: PAG_COR[x.pagamento] || '#a99a83' }));
   const totalPag = pagamentos.reduce((s, x) => s + (Number(x.total) || 0), 0) || 1;
   let acc = 0;
   const segs = pagamentos.map((x) => {
@@ -73,7 +74,7 @@ export function Relatorio({ ativo }) {
     : 'conic-gradient(var(--surface2) 0% 100%)';
   const donutTop = segs.slice().sort((a, b) => b.pct - a.pct)[0];
 
-  const maisVendidos = dados?.maisVendidos ?? [];
+  const maisVendidos = arr(dados?.maisVendidos);
   const maxQty = maisVendidos.length ? Math.max(...maisVendidos.map((m) => Number(m.qtd) || 0)) : 0;
 
   return (
@@ -238,13 +239,13 @@ export function Relatorio({ ativo }) {
           <div style={{ ...panel, padding: '20px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px' }}>Avaliações dos clientes</div>
-              {aval && aval.qtd > 0 && <span style={{ fontSize: '13px', fontWeight: 700, color: '#f5a623' }}>★ {aval.media?.toFixed(1)} · {aval.qtd}</span>}
+              {Number(aval?.qtd) > 0 && <span style={{ fontSize: '13px', fontWeight: 700, color: '#f5a623' }}>★ {Number(aval.media || 0).toFixed(1)} · {aval.qtd}</span>}
             </div>
-            {!aval || aval.qtd === 0 ? (
+            {!(Number(aval?.qtd) > 0) || arr(aval?.avaliacoes).length === 0 ? (
               <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '10px 0' }}>Nenhuma avaliação no período.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {aval.avaliacoes.map((a, i) => (
+                {arr(aval.avaliacoes).map((a, i) => (
                   <div key={`${a.dia}-${a.senha}-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '11px 0', borderTop: i ? '1px solid color-mix(in srgb,var(--border) 60%,transparent)' : 'none' }}>
                     <span style={{ fontSize: '15px', letterSpacing: '2px', color: '#f5a623', flex: 'none' }} title={`${a.nota}/5`}>
                       {'★'.repeat(a.nota)}<span style={{ color: 'var(--border)' }}>{'★'.repeat(5 - a.nota)}</span>
