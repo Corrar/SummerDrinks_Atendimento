@@ -20,7 +20,7 @@ function Blobs() {
  */
 export function Entrando() {
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}>
       <Blobs />
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px', textAlign: 'center', animation: 'sdFade .3s ease' }}>
         <div style={{ width: '52px', height: '52px', borderRadius: '50%', border: '4px solid rgba(255,255,255,.3)', borderTopColor: '#fff', animation: 'sd-spin .8s linear infinite' }} />
@@ -62,7 +62,7 @@ export function Login() {
   return (
     <div
       id="login-scr"
-      style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}
+      style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}
     >
       {/* formas decorativas de fundo */}
       <Blobs />
