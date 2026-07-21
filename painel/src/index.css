@@ -39,6 +39,8 @@ body {
 
 input, select, textarea { font-family: 'Hanken Grotesk', sans-serif; }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--fg) 32%, transparent); }
+/* Login (fundo laranja): placeholder branco e espaçado, como no protótipo. */
+#login-scr input::placeholder { color: rgba(255,255,255,.7); letter-spacing: .12em; }
 input:focus, textarea:focus, select:focus { outline: none; }
 
 @keyframes sdFade { from { opacity: 0; } to { opacity: 1; } }
