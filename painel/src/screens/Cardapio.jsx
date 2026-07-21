@@ -5,28 +5,40 @@ const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFra
 const CATS = ['Especiais', 'Balada', 'Aperol', 'Campari', 'Batidinhas', 'Caipirinhas', 'Doses', 'Potes', 'Baldes'];
 const CAT_COR = { Especiais: '#f5a623', Balada: '#ff5da2', Aperol: '#ff7a2f', Campari: '#e23b3b', Batidinhas: '#b07be0', Caipirinhas: '#7cc142', Doses: '#4aa8d8', Potes: '#3fcaa8', Baldes: '#e0b341' };
 
+const inpBase = {
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px',
+  color: 'var(--fg)', fontSize: '13.5px', outline: 'none',
+};
+
 /**
- * Cardápio — CRUD do catálogo. Regras herdadas do domínio:
- *  - `tamanhos` é APPEND-ONLY: adicionar e editar rotulo/preço são seguros;
- *    remover invalidaria referências posicionais já entregues ao app do
- *    cliente (o backend recusa com 409 TAMANHOS_SHRINK) — a UI nem oferece.
- *  - Edição usa estado local + botão Salvar explícito (nada de PUT por tecla).
+ * Editar cardápio — CRUD do catálogo em acordeão por categoria (igual ao
+ * protótipo). Regras do domínio preservadas:
+ *  - `tamanhos` é APPEND-ONLY: adicionar/editar rotulo/preço são seguros; remover
+ *    invalidaria referências posicionais já entregues ao app (backend recusa com
+ *    409 TAMANHOS_SHRINK) — a UI nem oferece remover.
+ *  - Edição usa estado local + Salvar explícito (sem PUT por tecla).
  *  - O /menu público é cacheado 60s: mudanças demoram até 1 min pro cliente.
  */
 export function Cardapio({ itens, recarregar }) {
-  const [filtro, setFiltro] = useState('Todos');
-  const [edits, setEdits] = useState({});          // id → item editado (dirty)
-  const [salvando, setSalvando] = useState(null);  // id em request
-  const [excluindo, setExcluindo] = useState(null);// item no modal de exclusão
+  const [abertos, setAbertos] = useState(() => new Set()); // categorias expandidas
+  const [edits, setEdits] = useState({});                  // id → item editado (dirty)
+  const [salvando, setSalvando] = useState(null);
+  const [excluindo, setExcluindo] = useState(null);
 
-  const lista = useMemo(() => {
-    const l = filtro === 'Todos' ? itens : itens.filter((i) => i.cat === filtro);
-    return l.slice().sort((a, b) => (a.ordem - b.ordem) || a.nome.localeCompare(b.nome));
-  }, [itens, filtro]);
+  const grupos = useMemo(
+    () => CATS.map((c) => ({
+      cat: c, cor: CAT_COR[c],
+      itens: itens.filter((i) => i.cat === c).slice().sort((a, b) => (a.ordem - b.ordem) || a.nome.localeCompare(b.nome)),
+    })),
+    [itens],
+  );
 
   const itemDe = (id) => edits[id] ?? itens.find((i) => i.id === id);
   const dirty = (id) => !!edits[id];
 
+  function toggleCat(cat) {
+    setAbertos((s) => { const n = new Set(s); n.has(cat) ? n.delete(cat) : n.add(cat); return n; });
+  }
   function editar(id, patch) {
     setEdits((e) => {
       const base = e[id] ?? itens.find((i) => i.id === id);
@@ -35,8 +47,7 @@ export function Cardapio({ itens, recarregar }) {
   }
   function editarTamanho(id, idx, patch) {
     const base = itemDe(id);
-    const tamanhos = base.tamanhos.map((t, i) => (i === idx ? { ...t, ...patch } : t));
-    editar(id, { tamanhos });
+    editar(id, { tamanhos: base.tamanhos.map((t, i) => (i === idx ? { ...t, ...patch } : t)) });
   }
   function addTamanho(id) {
     const base = itemDe(id);
@@ -44,6 +55,12 @@ export function Cardapio({ itens, recarregar }) {
   }
   function descartar(id) {
     setEdits((e) => { const n = { ...e }; delete n[id]; return n; });
+  }
+  function setImg(id, file) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => editar(id, { img: String(r.result) });
+    r.readAsDataURL(file);
   }
 
   async function salvar(id) {
@@ -69,15 +86,13 @@ export function Cardapio({ itens, recarregar }) {
 
   async function adicionar(cat) {
     const id = 'd' + Date.now();
-    const novo = {
-      id, cat: cat === 'Todos' ? 'Especiais' : cat, nome: 'Nova bebida', descricao: '',
-      tamanhos: [{ rotulo: 'Copo', preco: 0 }], img: '', ordem: itens.length + 1,
-    };
+    const novo = { id, cat, nome: 'Nova bebida', descricao: '', tamanhos: [{ rotulo: 'Copo', preco: 0 }], img: '', ordem: itens.length + 1 };
     setSalvando(id);
     try {
       await api.criarItemCatalogo(novo);
       await recarregar();
-      setEdits((e) => ({ ...e, [id]: novo }));   // abre já em edição
+      setEdits((e) => ({ ...e, [id]: novo }));
+      setAbertos((s) => new Set(s).add(cat));
     } catch (e) {
       alert(e?.message || 'Não foi possível criar.');
     } finally {
@@ -98,121 +113,104 @@ export function Cardapio({ itens, recarregar }) {
     }
   }
 
-  const chip = (ativo, cor) => ({
-    padding: '7px 13px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-    border: '1px solid var(--border)',
-    background: ativo ? (cor || 'var(--accent)') : 'var(--surface2)',
-    color: ativo ? '#1a1206' : 'var(--muted)',
-  });
-  const inputStyle = {
-    padding: '9px 12px', borderRadius: '10px', background: 'var(--surface2)',
-    border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600,
-  };
-
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-        <button onClick={() => setFiltro('Todos')} style={chip(filtro === 'Todos')}>Todos</button>
-        {CATS.map((c) => (
-          <button key={c} onClick={() => setFiltro(c)} style={chip(filtro === c, CAT_COR[c])}>{c}</button>
-        ))}
-        <span style={{ flex: 1 }} />
-        <button
-          onClick={() => adicionar(filtro)}
-          style={{ padding: '9px 16px', borderRadius: '11px', border: 'none', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 800, fontSize: '13px' }}
-        >
-          + Adicionar bebida
-        </button>
-      </div>
-
-      <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '14px' }}>
-        Alterações aparecem no app do cliente em até 1 minuto (cache do menu público).
-        Tamanhos podem ser adicionados e editados, mas não removidos.
-      </div>
-
-      {lista.length === 0 && (
-        <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>
-          Nenhuma bebida nesta categoria.
+    <div style={{ padding: '24px 28px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '8px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Editar cardápio</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '6px' }}>{itens.length} drinks · as alterações atualizam o cardápio e o QR dos clientes na hora</div>
         </div>
-      )}
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '12px' }}>
-        {lista.map((original) => {
-          const item = itemDe(original.id);
-          const emEdicao = dirty(original.id);
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '22px' }}>
+        {grupos.map((g) => {
+          const aberto = abertos.has(g.cat);
           return (
-            <div key={original.id} style={{ background: 'var(--card)', border: `1px solid ${emEdicao ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '16px', padding: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '10px' }}>
-                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: CAT_COR[item.cat] || 'var(--accent)', flex: '0 0 auto' }} />
-                <input
-                  value={item.nome}
-                  onChange={(e) => editar(original.id, { nome: e.target.value })}
-                  style={{ ...inputStyle, flex: 1, fontWeight: 800, fontSize: '15px', background: emEdicao ? 'var(--surface2)' : 'transparent', border: emEdicao ? inputStyle.border : '1px solid transparent' }}
-                />
-                <select
-                  value={item.cat}
-                  onChange={(e) => editar(original.id, { cat: e.target.value })}
-                  style={{ ...inputStyle, fontWeight: 700, fontSize: '12px' }}
-                >
-                  {CATS.map((c) => <option key={c}>{c}</option>)}
-                </select>
+            <div key={g.cat} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+              <div onClick={() => toggleCat(g.cat)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 16px', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: '13px', width: '14px', display: 'inline-block', transition: 'transform .15s', transform: aberto ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: g.cor }} />
+                  <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '17px', letterSpacing: '-.01em' }}>{g.cat}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', background: 'var(--bg)', borderRadius: '999px', padding: '3px 9px', fontWeight: 600 }}>{g.itens.length}</span>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); adicionar(g.cat); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '9px', padding: '8px 13px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>+ Drink</button>
               </div>
 
-              <textarea
-                value={item.descricao}
-                onChange={(e) => editar(original.id, { descricao: e.target.value })}
-                placeholder="Descrição (ingredientes)…"
-                rows={2}
-                style={{ ...inputStyle, width: '100%', resize: 'none', marginBottom: '10px' }}
-              />
+              {aberto && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+                  {g.itens.length === 0 && (
+                    <div style={{ fontSize: '12.5px', color: 'var(--muted)', padding: '14px 2px 2px' }}>Nenhum drink aqui ainda — use “+ Drink”.</div>
+                  )}
+                  {g.itens.map((original) => {
+                    const item = itemDe(original.id);
+                    const emEdicao = dirty(original.id);
+                    return (
+                      <div key={original.id} style={{ background: 'var(--bg)', border: `1px solid ${emEdicao ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '11px', padding: '11px 13px', display: 'flex', flexDirection: 'column', gap: '9px', marginTop: '12px' }}>
+                        {/* nome + preço (1º tamanho) + excluir */}
+                        <div style={{ display: 'flex', gap: '9px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input value={item.nome} onChange={(e) => editar(original.id, { nome: e.target.value })} placeholder="Nome do drink" style={{ ...inpBase, flex: 1, minWidth: '170px', padding: '9px 11px', fontWeight: 600 }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 11px' }}>
+                            <span style={{ color: 'var(--muted)', fontSize: '12.5px', fontWeight: 600 }}>R$</span>
+                            <input value={item.tamanhos[0]?.preco ?? 0} onChange={(e) => editarTamanho(original.id, 0, { preco: e.target.value.replace(',', '.') })} inputMode="decimal" style={{ width: '64px', background: 'none', border: 'none', padding: '9px 0', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 700, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
+                          </div>
+                          <button onClick={() => setExcluindo(original)} title="Excluir" style={{ flex: 'none', width: '38px', height: '38px', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#e2615a', fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>🗑</button>
+                        </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                {item.tamanhos.map((t, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '7px' }}>
-                    <input
-                      value={t.rotulo}
-                      onChange={(e) => editarTamanho(original.id, idx, { rotulo: e.target.value })}
-                      style={{ ...inputStyle, flex: 1 }}
-                    />
-                    <input
-                      value={t.preco}
-                      onChange={(e) => editarTamanho(original.id, idx, { preco: e.target.value.replace(',', '.') })}
-                      inputMode="decimal"
-                      style={{ ...inputStyle, width: '92px', textAlign: 'right' }}
-                    />
-                  </div>
-                ))}
-                <button
-                  onClick={() => addTamanho(original.id)}
-                  style={{ alignSelf: 'flex-start', padding: '7px 12px', borderRadius: '9px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12px' }}
-                >
-                  + Tamanho
-                </button>
-              </div>
+                        {/* tamanho(s) + categoria */}
+                        <div style={{ display: 'flex', gap: '9px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input value={item.tamanhos[0]?.rotulo ?? ''} onChange={(e) => editarTamanho(original.id, 0, { rotulo: e.target.value })} placeholder="Tamanho" style={{ ...inpBase, width: '180px', padding: '8px 11px', fontSize: '12.5px' }} />
+                          <select value={item.cat} onChange={(e) => editar(original.id, { cat: e.target.value })} style={{ ...inpBase, padding: '8px 11px', fontSize: '12.5px', cursor: 'pointer' }}>
+                            {CATS.map((c) => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ flex: 1, fontSize: '12px', color: 'var(--muted)' }}>
-                  {item.tamanhos.length > 1 ? 'a partir de ' : ''}{brl(Math.min(...item.tamanhos.map((t) => Number(t.preco) || 0)))}
-                </span>
-                {emEdicao ? (
-                  <>
-                    <button onClick={() => descartar(original.id)} style={{ padding: '8px 13px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', fontWeight: 800, fontSize: '12px' }}>
-                      Descartar
-                    </button>
-                    <button
-                      onClick={() => salvar(original.id)}
-                      disabled={salvando === original.id}
-                      style={{ padding: '8px 15px', borderRadius: '10px', border: 'none', background: 'var(--accent2)', color: '#1a1206', fontWeight: 800, fontSize: '12px' }}
-                    >
-                      {salvando === original.id ? 'Salvando…' : 'Salvar'}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => setExcluindo(original)} style={{ padding: '8px 13px', borderRadius: '10px', border: '1px solid var(--border)', background: 'transparent', color: '#e23b3b', fontWeight: 800, fontSize: '12px' }}>
-                    Excluir
-                  </button>
-                )}
-              </div>
+                        {/* tamanhos adicionais (append-only) */}
+                        {item.tamanhos.slice(1).map((t, i) => (
+                          <div key={i + 1} style={{ display: 'flex', gap: '9px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input value={t.rotulo} onChange={(e) => editarTamanho(original.id, i + 1, { rotulo: e.target.value })} placeholder="Tamanho" style={{ ...inpBase, width: '180px', padding: '8px 11px', fontSize: '12.5px' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 11px' }}>
+                              <span style={{ color: 'var(--muted)', fontSize: '12.5px', fontWeight: 600 }}>R$</span>
+                              <input value={t.preco} onChange={(e) => editarTamanho(original.id, i + 1, { preco: e.target.value.replace(',', '.') })} inputMode="decimal" style={{ width: '64px', background: 'none', border: 'none', padding: '9px 0', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 700, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
+                            </div>
+                          </div>
+                        ))}
+                        <button onClick={() => addTamanho(original.id)} style={{ alignSelf: 'flex-start', padding: '7px 12px', borderRadius: '9px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>+ Tamanho</button>
+
+                        {/* descrição */}
+                        <textarea value={item.descricao} onChange={(e) => editar(original.id, { descricao: e.target.value })} placeholder="Descrição / ingredientes" rows={2} style={{ ...inpBase, width: '100%', padding: '8px 11px', fontSize: '12px', lineHeight: 1.45, resize: 'vertical', fontFamily: 'inherit' }} />
+
+                        {/* foto */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '11px', flexWrap: 'wrap', paddingTop: '2px' }}>
+                          <div style={{ width: '50px', height: '50px', flex: 'none', borderRadius: '9px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.img ? (
+                              <img src={item.img} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.6" /><path d="M21 16l-5-5L5 20" /></svg>
+                            )}
+                          </div>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '9px 13px', color: 'var(--fg)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>
+                            {item.img ? 'Trocar foto' : 'Adicionar foto'}
+                            <input type="file" accept="image/*" onChange={(e) => setImg(original.id, e.target.files?.[0])} style={{ display: 'none' }} />
+                          </label>
+                          {item.img && (
+                            <button onClick={() => editar(original.id, { img: '' })} style={{ background: 'none', border: 'none', color: '#e2615a', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '6px' }}>Remover foto</button>
+                          )}
+                        </div>
+
+                        {/* ações (só quando há edição pendente) */}
+                        {emEdicao && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '2px' }}>
+                            <span style={{ flex: 1, fontSize: '12px', color: 'var(--muted)' }}>{item.tamanhos.length > 1 ? 'a partir de ' : ''}{brl(Math.min(...item.tamanhos.map((t) => Number(t.preco) || 0)))}</span>
+                            <button onClick={() => descartar(original.id)} style={{ padding: '8px 13px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}>Descartar</button>
+                            <button onClick={() => salvar(original.id)} disabled={salvando === original.id} style={{ padding: '8px 15px', borderRadius: '10px', border: 'none', background: 'var(--accent2)', color: '#1a1206', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}>{salvando === original.id ? 'Salvando…' : 'Salvar'}</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -225,19 +223,15 @@ export function Cardapio({ itens, recarregar }) {
           style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '22px', animation: 'sdFade .18s ease' }}
         >
           <div style={{ width: '100%', maxWidth: '380px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '24px', animation: 'sdModalIn .28s cubic-bezier(.2,1,.3,1)' }}>
-            <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '19px', color: 'var(--fg)', marginBottom: '8px' }}>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '19px', color: 'var(--fg)', marginBottom: '8px' }}>
               Excluir “{excluindo.nome}”?
             </div>
             <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '18px', lineHeight: 1.5 }}>
               A bebida some do cardápio do app do cliente em até 1 minuto. Pedidos já feitos não são afetados.
             </div>
             <div style={{ display: 'flex', gap: '9px' }}>
-              <button onClick={() => setExcluindo(null)} style={{ flex: 1, padding: '12px', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--fg)', fontWeight: 800, fontSize: '14px' }}>
-                Cancelar
-              </button>
-              <button onClick={excluir} style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '12px', background: '#e23b3b', color: '#fff', fontWeight: 800, fontSize: '14px' }}>
-                Excluir
-              </button>
+              <button onClick={() => setExcluindo(null)} style={{ flex: 1, padding: '12px', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--fg)', fontWeight: 800, fontSize: '14px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={excluir} style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '12px', background: '#e23b3b', color: '#fff', fontWeight: 800, fontSize: '14px', cursor: 'pointer' }}>Excluir</button>
             </div>
           </div>
         </div>
