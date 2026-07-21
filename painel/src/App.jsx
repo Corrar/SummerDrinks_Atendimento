@@ -172,7 +172,14 @@ function Shell() {
           />
         )}
         {abaAtual === 'painel' && (
-          <Painel orders={ordersApi.orders} painel={ordersApi.painel} reordenar={ordersApi.reordenar} />
+          <Painel
+            orders={ordersApi.orders}
+            painel={ordersApi.painel}
+            reordenar={ordersApi.reordenar}
+            marcar={ordersApi.marcar}
+            togglePago={ordersApi.togglePago}
+            entregar={ordersApi.entregar}
+          />
         )}
         {abaAtual === 'agenda' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
