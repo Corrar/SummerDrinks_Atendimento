@@ -101,162 +101,134 @@ export function Config({ ativo }) {
     }
   }
 
-  const card = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px' };
-  const inputStyle = {
-    padding: '9px 12px', borderRadius: '10px', background: 'var(--surface2)',
-    border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600,
-  };
-  const titulo = { fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '17px', color: 'var(--fg)', marginBottom: '12px' };
+  const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', padding: '20px 22px', marginBottom: '16px' };
+  const secTitulo = { fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px', marginBottom: '4px' };
+  const secDesc = { fontSize: '12.5px', color: 'var(--muted)', marginBottom: '16px' };
+  const inp = { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', outline: 'none' };
+  const addBtn = { display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '9px', padding: '8px 13px', fontWeight: 700, fontSize: '12px', cursor: 'pointer' };
+  const pill = (on) => ({ cursor: 'pointer', border: on ? 'none' : '1px solid var(--border)', fontSize: '11px', fontWeight: 700, padding: '6px 13px', borderRadius: '999px', whiteSpace: 'nowrap', transition: 'all .12s', ...(on ? { background: 'color-mix(in srgb,#7cc142 20%,transparent)', color: '#a7e76b' } : { background: 'var(--bg)', color: 'var(--muted)' }) });
+  const lixo = { flex: 'none', width: '38px', height: '38px', borderRadius: '8px', background: 'var(--surface2)', border: '1px solid var(--border)', color: '#e2615a', fontSize: '15px', cursor: 'pointer', lineHeight: 1 };
+
+  const nDiasAbertos = form.horarios.filter((d) => d.aberto).length;
+  const nLocaisAtivos = form.locais.filter((l) => l.ativo).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '760px' }}>
-      {/* barra de salvar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span style={{ flex: 1, fontSize: '13px', fontWeight: 700, color: dirty ? 'var(--accent)' : 'var(--muted)' }}>
-          {dirty ? 'Alterações não salvas' : 'Tudo salvo'}
-        </span>
-        <button
-          onClick={salvar}
-          disabled={!dirty || salvando}
-          style={{
-            padding: '11px 22px', borderRadius: '12px', border: 'none', fontWeight: 800, fontSize: '14px',
-            background: dirty ? 'var(--accent2)' : 'var(--surface2)',
-            color: dirty ? '#1a1206' : 'var(--muted)',
-          }}
-        >
-          {salvando ? 'Salvando…' : 'Salvar tudo'}
-        </button>
+    <div style={{ padding: '24px 28px', maxWidth: '880px', margin: '0 auto', position: 'relative' }}>
+      <div style={{ marginBottom: '22px' }}>
+        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Ajustes</div>
+        <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '6px' }}>{nDiasAbertos} dias de atendimento · {nLocaisAtivos} locais ativos</div>
       </div>
+
       {aviso && (
         <div style={{
-          borderRadius: '12px', padding: '11px 14px', fontSize: '13px', fontWeight: 700, color: 'var(--fg)',
+          borderRadius: '12px', padding: '11px 14px', fontSize: '13px', fontWeight: 700, color: 'var(--fg)', marginBottom: '16px',
           background: aviso.tipo === 'ok' ? 'color-mix(in srgb, var(--accent2) 14%, transparent)' : 'color-mix(in srgb, #e23b3b 14%, transparent)',
           border: `1px solid ${aviso.tipo === 'ok' ? 'var(--accent2)' : '#e23b3b'}`,
-        }}>
-          {aviso.texto}
-        </div>
+        }}>{aviso.texto}</div>
       )}
 
-      {/* horários */}
-      <div style={card}>
-        <div style={titulo}>Horário de funcionamento</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* HORÁRIO */}
+      <div style={panel}>
+        <div style={secTitulo}>Horário de atendimento</div>
+        <div style={secDesc}>Defina os dias e horários em que o trailer atende.</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {form.horarios.map((h, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setHorario(i, { aberto: !h.aberto })}
-                style={{
-                  width: '110px', padding: '9px 0', borderRadius: '10px', border: 'none', fontWeight: 800, fontSize: '13px',
-                  background: h.aberto ? 'color-mix(in srgb, var(--accent2) 16%, transparent)' : 'var(--surface2)',
-                  color: h.aberto ? 'var(--accent2)' : 'var(--muted)',
-                }}
-              >
-                {h.dia.split('-')[0]}
-              </button>
-              {h.aberto ? (
-                <>
-                  <input type="time" value={h.abre} onChange={(e) => setHorario(i, { abre: e.target.value })} style={inputStyle} />
-                  <span style={{ color: 'var(--muted)', fontSize: '12px' }}>às</span>
-                  <input type="time" value={h.fecha} onChange={(e) => setHorario(i, { fecha: e.target.value })} style={inputStyle} />
-                </>
-              ) : (
-                <span style={{ fontSize: '12.5px', color: 'var(--muted)', fontWeight: 700 }}>Fechado</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid color-mix(in srgb,var(--border) 60%,transparent)' }}>
+              <span style={{ width: '130px', flex: 'none', fontWeight: 600, fontSize: '13.5px' }}>{h.dia}</span>
+              <button onClick={() => setHorario(i, { aberto: !h.aberto })} style={pill(h.aberto)}>{h.aberto ? 'Aberto' : 'Fechado'}</button>
+              {h.aberto && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginLeft: 'auto' }}>
+                  <input type="time" value={h.abre} onChange={(e) => setHorario(i, { abre: e.target.value })} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '9px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
+                  <span style={{ color: 'var(--muted)', fontSize: '13px' }}>até</span>
+                  <input type="time" value={h.fecha} onChange={(e) => setHorario(i, { fecha: e.target.value })} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '9px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
+                </div>
               )}
-              <span style={{ flex: 1 }} />
-              <button onClick={() => removerDia(i)} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '15px', fontWeight: 800 }} title="Remover dia">×</button>
+              <button onClick={() => removerDia(i)} title="Remover dia" style={{ marginLeft: h.aberto ? 0 : 'auto', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '16px', fontWeight: 800, cursor: 'pointer' }}>×</button>
             </div>
           ))}
         </div>
         {form.horarios.length < 7 && (
-          <button onClick={addDia} style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px' }}>
-            + Adicionar dia
-          </button>
+          <button onClick={addDia} style={{ marginTop: '12px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px', cursor: 'pointer' }}>+ Adicionar dia</button>
         )}
-        <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
-          O indicador Aberto/Fechado do app do cliente segue estes horários (fechamento depois da meia-noite é suportado).
-        </div>
       </div>
 
-      {/* locais */}
-      <div style={card}>
-        <div style={titulo}>Locais do trailer</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+      {/* LOCAIS */}
+      <div style={panel}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+          <div style={secTitulo}>Locais de atendimento</div>
+          <button onClick={addLocal} style={addBtn}>+ Local</button>
+        </div>
+        <div style={secDesc}>Pontos onde o trailer costuma atender.</div>
+        {form.locais.length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '13px', padding: '14px 0' }}>Nenhum local cadastrado. Toque em “+ Local”.</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
           {form.locais.map((l) => (
-            <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setLocal(l.id, { ativo: !l.ativo })}
-                title={l.ativo ? 'Local ativo (aparece no app)' : 'Inativo'}
-                style={{
-                  width: '34px', height: '34px', borderRadius: '10px', border: 'none', fontWeight: 800,
-                  background: l.ativo ? 'var(--accent2)' : 'var(--surface2)',
-                  color: l.ativo ? '#1a1206' : 'var(--muted)',
-                }}
-              >
-                ✓
-              </button>
-              <input value={l.nome} onChange={(e) => setLocal(l.id, { nome: e.target.value })} placeholder="Nome" style={{ ...inputStyle, width: '190px' }} />
-              <input value={l.endereco} onChange={(e) => setLocal(l.id, { endereco: e.target.value })} placeholder="Endereço" style={{ ...inputStyle, flex: 1, minWidth: '180px' }} />
-              <button onClick={() => removerLocal(l.id)} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '15px', fontWeight: 800 }} title="Remover local">×</button>
+            <div key={l.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <input value={l.nome} onChange={(e) => setLocal(l.id, { nome: e.target.value })} placeholder="Nome do local" style={{ ...inp, flex: 1, minWidth: 0, fontWeight: 600 }} />
+                <button onClick={() => setLocal(l.id, { ativo: !l.ativo })} style={pill(l.ativo)}>{l.ativo ? 'Ativo' : 'Inativo'}</button>
+                <button onClick={() => removerLocal(l.id)} title="Excluir" style={lixo}>🗑</button>
+              </div>
+              <input value={l.endereco} onChange={(e) => setLocal(l.id, { endereco: e.target.value })} placeholder="Endereço / referência" style={{ ...inp, fontSize: '13px' }} />
             </div>
           ))}
         </div>
-        <button onClick={addLocal} style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px' }}>
-          + Adicionar local
-        </button>
-        <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
-          O primeiro local ATIVO aparece no mapa da aba Contato do app do cliente.
-        </div>
       </div>
 
-      {/* contato */}
-      <div style={card}>
-        <div style={titulo}>Contato público do bar</div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <label style={{ flex: 1, minWidth: '200px' }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>TELEFONE</span>
-            <input value={form.telefone || ''} onChange={(e) => mutar({ telefone: e.target.value })} placeholder="(81) 3333-0000" style={{ ...inputStyle, width: '100%' }} />
-          </label>
-          <label style={{ flex: 1, minWidth: '200px' }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>WHATSAPP</span>
-            <input value={form.whatsapp || ''} onChange={(e) => mutar({ whatsapp: e.target.value })} placeholder="(81) 9 9999-0000" style={{ ...inputStyle, width: '100%' }} />
-          </label>
-          <label style={{ flex: 1, minWidth: '200px' }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>E-MAIL</span>
-            <input value={form.email || ''} onChange={(e) => mutar({ email: e.target.value })} placeholder="contato@summerdrinks.com.br" style={{ ...inputStyle, width: '100%' }} />
-          </label>
-          <label style={{ flex: 1, minWidth: '200px' }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', color: 'var(--muted)', marginBottom: '5px' }}>INSTAGRAM</span>
-            <input value={form.instagram || ''} onChange={(e) => mutar({ instagram: e.target.value })} placeholder="@summerdrinks" style={{ ...inputStyle, width: '100%' }} />
-          </label>
-        </div>
-        <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
-          Estes canais aparecem na aba Contato do app do cliente (atualiza em até 1 minuto). Use apenas os dados PÚBLICOS do bar — nunca contatos pessoais.
-        </div>
-      </div>
-
-      {/* cardápios de evento (open bar) */}
-      <div style={card}>
-        <div style={titulo}>Cardápios de evento</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+      {/* CARDÁPIOS DE EVENTO */}
+      <div style={panel}>
+        <div style={secTitulo}>Cardápios de evento — mais utilizados</div>
+        <div style={secDesc}>Cardápios oferecidos como atalho quando o cliente solicita um evento.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
           {ce().map((c) => (
-            <div key={c.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <input value={c.nome} onChange={(e) => setCardapioEvento(c.id, { nome: e.target.value })} placeholder="Nome" style={{ ...inputStyle, width: '200px', fontWeight: 800 }} />
-              <input value={c.itens} onChange={(e) => setCardapioEvento(c.id, { itens: e.target.value })} placeholder="Itens (ex.: Caipirinha, Aperol Spritz…)" style={{ ...inputStyle, flex: 1, minWidth: '220px' }} />
-              <button onClick={() => removerCardapioEvento(c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '15px', fontWeight: 800 }} title="Remover">×</button>
+            <div key={c.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--accent)', fontSize: '15px' }}>★</span>
+                <input value={c.nome} onChange={(e) => setCardapioEvento(c.id, { nome: e.target.value })} placeholder="Nome do cardápio" style={{ ...inp, flex: 1, minWidth: 0, fontWeight: 600 }} />
+                <button onClick={() => removerCardapioEvento(c.id)} title="Remover" style={{ ...lixo, width: '32px', height: '32px', fontSize: '13px' }}>🗑</button>
+              </div>
+              <textarea value={c.itens} onChange={(e) => setCardapioEvento(c.id, { itens: e.target.value })} rows={2} placeholder="Drinks incluídos..." style={{ ...inp, fontSize: '13px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }} />
             </div>
           ))}
-          {ce().length === 0 && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Nenhum cardápio de evento cadastrado.</div>}
         </div>
-        <button onClick={addCardapioEvento} style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px' }}>
-          + Adicionar cardápio
-        </button>
-        <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
-          Presets de open bar usados no editor da Agenda (não aparecem no app do cliente). Salvos com o botão “Salvar tudo”.
+        <button onClick={addCardapioEvento} style={{ marginTop: '12px', padding: '8px 14px', borderRadius: '10px', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', fontWeight: 700, fontSize: '12.5px', cursor: 'pointer' }}>+ Adicionar cardápio</button>
+      </div>
+
+      {/* USUÁRIOS */}
+      <div style={panel}><Usuarios /></div>
+
+      {/* CONTATO */}
+      <div style={{ ...panel, marginBottom: dirty ? '80px' : '16px' }}>
+        <div style={secTitulo}>Contato</div>
+        <div style={secDesc}>Canais usados para contato e pedidos (aparecem na aba Contato do app do cliente).</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <CampoContato rotulo="Telefone para contato" icone="☎" corIcone="var(--muted)" valor={form.telefone || ''} onChange={(v) => mutar({ telefone: v })} placeholder="(31) 0000-0000" />
+          <CampoContato rotulo="WhatsApp" icone="✆" corIcone="#25d366" borda="color-mix(in srgb,#25d366 32%,var(--border))" valor={form.whatsapp || ''} onChange={(v) => mutar({ whatsapp: v })} placeholder="(31) 90000-0000" />
+          <CampoContato rotulo="E-mail" icone="✉" corIcone="var(--muted)" valor={form.email || ''} onChange={(v) => mutar({ email: v })} placeholder="contato@summerdrinks.com.br" />
+          <CampoContato rotulo="Instagram" icone="@" corIcone="var(--muted)" valor={form.instagram || ''} onChange={(v) => mutar({ instagram: v })} placeholder="@summerdrinks" />
         </div>
       </div>
 
-      {/* usuários (operadores) — endpoints próprios, salvam na hora */}
-      <Usuarios />
+      {/* barra de salvar (fixa, só quando há mudanças) */}
+      {dirty && (
+        <div style={{ position: 'sticky', bottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--card)', border: '1px solid var(--accent)', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 10px 30px rgba(0,0,0,.35)' }}>
+          <span style={{ flex: 1, fontSize: '13px', fontWeight: 700, color: 'var(--accent)' }}>Alterações não salvas</span>
+          <button onClick={salvar} disabled={salvando} style={{ padding: '11px 22px', borderRadius: '12px', border: 'none', fontWeight: 800, fontSize: '14px', background: 'var(--accent2)', color: '#1a1206', cursor: 'pointer' }}>
+            {salvando ? 'Salvando…' : 'Salvar tudo'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampoContato({ rotulo, icone, corIcone, borda, valor, onChange, placeholder }) {
+  return (
+    <div>
+      <label style={{ fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '6px', display: 'block' }}>{rotulo}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '9px', background: 'var(--bg)', border: `1px solid ${borda || 'var(--border)'}`, borderRadius: '10px', padding: '0 12px' }}>
+        <span style={{ color: corIcone, fontSize: '15px' }}>{icone}</span>
+        <input value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: '12px 0', color: 'var(--fg)', fontSize: '14px', fontWeight: 600, outline: 'none' }} />
+      </div>
     </div>
   );
 }
@@ -303,50 +275,56 @@ function Usuarios() {
     if (s && s.length >= 4) await acao(() => api.atualizarUsuario(u.id, { senha: s }));
   }
 
-  const card = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px' };
-  const inputStyle = { padding: '9px 12px', borderRadius: '10px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600 };
-  const titulo = { fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '17px', color: 'var(--fg)', marginBottom: '12px' };
-  const papelPill = (ativo) => ({ cursor: 'pointer', border: 'none', fontSize: '11px', fontWeight: 700, padding: '8px 13px', borderRadius: '999px', whiteSpace: 'nowrap', background: ativo ? 'var(--accent)' : 'var(--surface2)', color: ativo ? 'var(--onAccent)' : 'var(--muted)' });
+  const inp = { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', outline: 'none' };
+  const papelPill = (ativo) => ({ cursor: 'pointer', border: ativo ? 'none' : '1px solid var(--border)', fontSize: '11px', fontWeight: 700, padding: '7px 13px', borderRadius: '999px', whiteSpace: 'nowrap', background: ativo ? 'var(--accent)' : 'var(--bg)', color: ativo ? 'var(--onAccent)' : 'var(--muted)' });
+  const miniBtn = { border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' };
+  const lixo = { flex: 'none', width: '38px', height: '38px', borderRadius: '8px', background: 'var(--surface2)', border: '1px solid var(--border)', color: '#e2615a', fontSize: '15px', cursor: 'pointer', lineHeight: 1 };
+  const n = (lista || []).length;
 
   return (
-    <div style={card}>
-      <div style={titulo}>Usuários</div>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px' }}>Usuários</div>
+      </div>
+      <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginBottom: '16px' }}>
+        Contas com acesso ao sistema ({n}). <strong style={{ color: 'var(--fg)' }}>Admin</strong> acessa tudo; <strong style={{ color: 'var(--fg)' }}>Atendente</strong> vê apenas Atendente, Painel e Cardápio.
+      </div>
       {erro && <div style={{ fontSize: '12.5px', color: '#ff927d', marginBottom: '10px' }}>{erro}</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
         {(lista || []).map((u) => (
-          <div key={u.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ flex: 1, minWidth: '140px', fontSize: '14px', fontWeight: 700, color: u.ativo ? 'var(--fg)' : 'var(--muted)' }}>
+          <div key={u.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '13px 14px', display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap' }}>
+            <span style={{ flex: 1.2, minWidth: '120px', fontSize: '14px', fontWeight: 700, color: u.ativo ? 'var(--fg)' : 'var(--muted)' }}>
               {u.login}{!u.ativo && <span style={{ fontSize: '11px', color: 'var(--muted)' }}> · inativo</span>}
             </span>
-            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { papel: u.papel === 'gestao' ? 'pdv' : 'gestao' }))} style={papelPill(u.papel === 'gestao')}>
+            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { papel: u.papel === 'gestao' ? 'pdv' : 'gestao' }))} title="Alternar nível de permissão" style={papelPill(u.papel === 'gestao')}>
               {u.papel === 'gestao' ? 'Admin' : 'Atendente'}
             </button>
-            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { ativo: !u.ativo }))} style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700 }}>
-              {u.ativo ? 'Desativar' : 'Ativar'}
-            </button>
-            <button onClick={() => trocarSenha(u)} style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700 }}>Senha</button>
-            <button onClick={() => acao(() => api.excluirUsuario(u.id))} style={{ border: 'none', background: 'transparent', color: '#e23b3b', fontSize: '11.5px', fontWeight: 800, padding: '7px 6px' }}>Excluir</button>
+            <button onClick={() => acao(() => api.atualizarUsuario(u.id, { ativo: !u.ativo }))} style={miniBtn}>{u.ativo ? 'Desativar' : 'Ativar'}</button>
+            <button onClick={() => trocarSenha(u)} style={miniBtn}>Senha</button>
+            <button onClick={() => acao(() => api.excluirUsuario(u.id))} title="Excluir" style={lixo}>🗑</button>
           </div>
         ))}
         {lista && lista.length === 0 && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Nenhum usuário.</div>}
         {!lista && !erro && <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Carregando…</div>}
-      </div>
 
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-        <input value={novo.login} onChange={(e) => setNovo((n) => ({ ...n, login: e.target.value }))} placeholder="login" style={{ ...inputStyle, width: '150px' }} />
-        <input value={novo.senha} onChange={(e) => setNovo((n) => ({ ...n, senha: e.target.value }))} placeholder="senha" type="password" style={{ ...inputStyle, width: '150px' }} />
-        <div style={{ display: 'flex', gap: '6px' }}>
-          {PAPEIS.map((p) => (
-            <button key={p.valor} onClick={() => setNovo((n) => ({ ...n, papel: p.valor }))} style={papelPill(novo.papel === p.valor)}>{p.label}</button>
-          ))}
+        {/* nova conta */}
+        <div style={{ background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: '12px', padding: '13px 14px', display: 'flex', gap: '9px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input value={novo.login} onChange={(e) => setNovo((x) => ({ ...x, login: e.target.value }))} placeholder="Novo login" autoComplete="off" style={{ ...inp, flex: 1, minWidth: '120px' }} />
+          <input value={novo.senha} onChange={(e) => setNovo((x) => ({ ...x, senha: e.target.value }))} placeholder="Senha" type="password" autoComplete="new-password" style={{ ...inp, flex: 1, minWidth: '110px' }} />
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {PAPEIS.map((p) => (
+              <button key={p.valor} onClick={() => setNovo((x) => ({ ...x, papel: p.valor }))} style={papelPill(novo.papel === p.valor)}>{p.label}</button>
+            ))}
+          </div>
+          <button onClick={criar} disabled={criando} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: 'var(--accent2)', color: '#1a1206', fontWeight: 800, fontSize: '13px', cursor: 'pointer' }}>
+            {criando ? 'Criando…' : '+ Usuário'}
+          </button>
         </div>
-        <button onClick={criar} disabled={criando} style={{ padding: '9px 16px', borderRadius: '10px', border: 'none', background: 'var(--accent2)', color: '#1a1206', fontWeight: 800, fontSize: '13px' }}>
-          {criando ? 'Criando…' : '+ Adicionar'}
-        </button>
       </div>
       <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '10px' }}>
         A senha é guardada como hash no servidor (nunca em claro). Sempre resta ao menos um admin ativo.
       </div>
-    </div>
+    </>
   );
 }
