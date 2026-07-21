@@ -50,54 +50,53 @@ export function CardapioView({ itens }) {
   }, [qrOpen, destino]);
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '20px', color: 'var(--fg)', margin: 0 }}>Cardápio</h2>
-          <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>{itens.length} bebidas · o mesmo que o cliente vê no app</div>
+    <div style={{ position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, padding: '28px', maxWidth: '1000px', margin: '0 auto' }}>
+        {/* cabeçalho centralizado + botão de QR (canto) */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', marginBottom: '30px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.28em', fontWeight: 600 }}>Cardápio</div>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '38px', letterSpacing: '-.02em', marginTop: '8px' }}>Summer Drinks</div>
+          </div>
+          <button
+            onClick={() => setQrOpen(true)}
+            title="QR do cardápio"
+            style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 16px', borderRadius: '12px', border: 'none', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 700, fontSize: '13px', fontFamily: "'Bricolage Grotesque',sans-serif", cursor: 'pointer' }}
+            className="sd-qrbtn"
+          >
+            <QrGlyph /> QR do cardápio
+          </button>
         </div>
-        <button
-          onClick={() => setQrOpen(true)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 18px', borderRadius: '12px', border: 'none', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 800, fontSize: '13.5px' }}
-        >
-          <QrGlyph /> QR do cardápio
-        </button>
-      </div>
 
-      {grupos.length === 0 && (
-        <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>Cardápio vazio — cadastre bebidas na aba Editar.</div>
-      )}
+        {grupos.length === 0 && (
+          <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>Cardápio vazio — cadastre bebidas na aba Editar.</div>
+        )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-        {grupos.map((g) => (
-          <section key={g.cat}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '10px' }}>
-              <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: g.cor, boxShadow: `0 0 10px ${g.cor}` }} />
-              <h3 style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '17px', color: 'var(--fg)', margin: 0 }}>{g.cat}</h3>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)' }}>{g.itens.length}</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px' }}>
-              {g.itens.map((p) => (
-                <div key={p.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '14px', padding: '13px' }}>
-                  {p.img && (
-                    <div style={{ width: '56px', height: '56px', borderRadius: '11px', overflow: 'hidden', flex: '0 0 auto', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={p.img} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+        {/* menu em 2 colunas (magazine), como no protótipo */}
+        <div style={{ columns: 2, columnGap: '48px' }}>
+          {grupos.map((g) => (
+            <div key={g.cat} style={{ breakInside: 'avoid', marginBottom: '30px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '14px', paddingBottom: '9px', borderBottom: '2px solid var(--border)' }}>
+                <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: g.cor }} />
+                <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '18px', letterSpacing: '-.01em' }}>{g.cat}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {g.itens.map((p) => (
+                  <div key={p.id}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '15px' }}>{p.nome}</span>
+                      <span style={{ flex: 1, borderBottom: '1px dotted var(--border)', alignSelf: 'flex-end', marginBottom: '5px' }} />
+                      <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px' }}>{brl(precoMin(p))}</span>
                     </div>
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--fg)' }}>{p.nome}</div>
-                    <div style={{ fontSize: '11.5px', color: g.cor, fontWeight: 600, marginTop: '2px' }}>{volLabel(p)}</div>
-                    {descDe(p) && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '5px', lineHeight: 1.45 }}>{descDe(p)}</div>}
+                    <div style={{ fontSize: '11.5px', color: 'var(--muted)', lineHeight: 1.45, marginTop: '3px' }}>
+                      {volLabel(p)}{descDe(p) ? ` · ${descDe(p)}` : ''}
+                    </div>
                   </div>
-                  <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '15px', color: 'var(--fg)', whiteSpace: 'nowrap' }}>
-                    {p.tamanhos && p.tamanhos.length > 1 && <span style={{ display: 'block', fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: '10px', color: 'var(--muted)' }}>a partir de</span>}
-                    {brl(precoMin(p))}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </section>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* QR do cardápio */}
