@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
+import { Tour } from './components/Tour.jsx';
 import { Login, Entrando } from './screens/Login.jsx';
 import { PDV } from './screens/PDV.jsx';
 import { Painel } from './screens/Painel.jsx';
@@ -64,8 +65,18 @@ function Shell() {
   const [tema, setTema] = useState(() => localStorage.getItem('sdp_tema') || 'Noturno');
   const [menuAberto, setMenuAberto] = useState(false);
   const [buscaMenu, setBuscaMenu] = useState('');
+  const [tourAtivo, setTourAtivo] = useState(false);
   const { isMobile } = useViewport();
   const { aberto } = useAberto(autenticado);
+
+  // Tutorial no PRIMEIRO login (uma vez por navegador). Pular/Concluir marca como visto.
+  useEffect(() => {
+    if (autenticado && !localStorage.getItem('sdp_onboarded')) {
+      setAba('pdv');
+      setMenuAberto(false);
+      setTourAtivo(true);
+    }
+  }, [autenticado]);
 
   // hooks só pollam quando autenticado (agendas também alimentam a ocupação da Dispo)
   const ordersApi = useOrders(autenticado);
@@ -92,6 +103,23 @@ function Shell() {
   const abaAtual = permitidas.includes(aba) ? aba : 'pdv';
   const barras = abas.filter((a) => PRIMARIAS.includes(a.key)); // barra inferior (mobile)
   const abaEhPrimaria = barras.some((a) => a.key === abaAtual);
+
+  // Passos do tutorial (filtrados pelas telas que o usuário pode ver).
+  const tourSteps = [
+    { titulo: 'Bem-vindo(a)! 👋', texto: 'Este é o painel do Summer Drinks. Vou te mostrar rapidinho onde fica cada coisa — você pode pular quando quiser.' },
+    { titulo: 'Navegação', texto: isMobile ? 'Aqui embaixo você troca entre as áreas. As demais ficam no botão Menu.' : 'Aqui em cima você troca entre as áreas do sistema.', alvo: '[data-tour="nav"]' },
+  ];
+  if (permitidas.includes('pdv')) tourSteps.push({ titulo: 'Atendente — fazer um pedido', texto: 'Toque nas bebidas para montar o pedido, escolha o pagamento e toque em Gerar senha. A comanda com a senha sai pronta para imprimir.', tab: 'pdv', alvo: '[data-tour="aba-pdv"]' });
+  if (permitidas.includes('painel')) tourSteps.push({ titulo: 'Painel de senhas', texto: 'Acompanhe o que está Em preparo e Pronto para retirar; chame as senhas e marque como entregue — o cliente é chamado pelo número.', tab: 'painel', alvo: '[data-tour="aba-painel"]' });
+  if (permitidas.includes('agenda')) tourSteps.push({ titulo: 'Agenda', texto: 'Gerencie eventos: aceite solicitações, confirme e oriente o valor. E defina a Disponibilidade — os dias e horários que o cliente vê ao pedir um evento.', tab: 'agenda', alvo: '[data-tour="aba-agenda"]' });
+  if (permitidas.includes('editor')) tourSteps.push({ titulo: 'Cardápio', texto: 'Edite bebidas, preços e tamanhos por categoria e gere o QR do cardápio para as mesas. As mudanças chegam ao cliente em até 1 minuto.', tab: 'editor', alvo: '[data-tour="aba-editor"]' });
+  else if (permitidas.includes('cardapio')) tourSteps.push({ titulo: 'Cardápio', texto: 'Aqui você consulta o cardápio (o mesmo que o cliente vê) e gera o QR para as mesas.', tab: 'cardapio', alvo: '[data-tour="aba-cardapio"]' });
+  if (permitidas.includes('relatorio')) tourSteps.push({ titulo: 'Relatório', texto: 'Acompanhe faturamento, ticket médio, formas de pagamento e as bebidas mais vendidas por período.', tab: 'relatorio', alvo: '[data-tour="aba-relatorio"]' });
+  if (permitidas.includes('ajustes')) tourSteps.push({ titulo: 'Ajustes', texto: 'Defina quando o trailer fica aberto (horários), onde atende (locais) e o contato que o cliente vê: telefone, e-mail e redes sociais. Aqui também ficam os usuários do sistema.', tab: 'ajustes', alvo: '[data-tour="aba-ajustes"]' });
+  tourSteps.push({ titulo: 'Tudo pronto! 🎉', texto: 'Você já pode usar o sistema. Para rever este guia, toque no “?” no topo a qualquer momento.' });
+
+  function fecharTour() { setTourAtivo(false); setAba('pdv'); try { localStorage.setItem('sdp_onboarded', '1'); } catch { /* ignore */ } }
+  function abrirTour() { setMenuAberto(false); setAba('pdv'); setTourAtivo(true); }
 
   const papelLabel = papel === 'gestao' ? 'Administrador' : 'Atendente';
   const inicial = (papelLabel[0] || '?').toUpperCase();
@@ -128,12 +156,13 @@ function Shell() {
         {/* abas — grupo com borda arredondada (desktop). No celular a navegação vai
             para a barra inferior (bottom nav), então o nav do topo some. */}
         {!isMobile && (
-          <nav className="sd-scroll" style={{ display: 'flex', gap: '6px', background: 'var(--surface)', padding: '5px', borderRadius: '13px', border: '1px solid var(--border)', overflowX: 'auto', maxWidth: '100%' }}>
+          <nav data-tour="nav" className="sd-scroll" style={{ display: 'flex', gap: '6px', background: 'var(--surface)', padding: '5px', borderRadius: '13px', border: '1px solid var(--border)', overflowX: 'auto', maxWidth: '100%' }}>
             {abas.map((a) => {
               const ativo = abaAtual === a.key;
               return (
                 <button
                   key={a.key}
+                  data-tour={`aba-${a.key}`}
                   onClick={() => setAba(a.key)}
                   style={{
                     ...tabBase,
@@ -162,6 +191,15 @@ function Shell() {
               </div>
             )}
           </div>
+
+          {/* ajuda / rever tutorial */}
+          <button
+            onClick={abrirTour}
+            title="Rever o tutorial de uso"
+            style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '11px', color: 'var(--muted)', fontSize: '17px', fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}
+          >
+            ?
+          </button>
 
           {/* tema */}
           <button
@@ -254,6 +292,7 @@ function Shell() {
       {isMobile && (
         <>
           <nav
+            data-tour="nav"
             style={{
               position: 'fixed', left: '10px', right: '10px', bottom: '10px', zIndex: 35,
               display: 'flex', gap: '2px', background: 'var(--headerbg)', border: '1px solid var(--border)',
@@ -264,7 +303,7 @@ function Shell() {
             {barras.map((a) => {
               const ativo = abaAtual === a.key && !menuAberto;
               return (
-                <button key={a.key} onClick={() => { setAba(a.key); setMenuAberto(false); }} style={bottomItem(ativo)}>
+                <button key={a.key} data-tour={`aba-${a.key}`} onClick={() => { setAba(a.key); setMenuAberto(false); }} style={bottomItem(ativo)}>
                   <AbaIcone nome={a.key} size={22} />
                   <span style={{ fontSize: '11px', fontWeight: ativo ? 700 : 600 }}>{a.rotulo}</span>
                 </button>
@@ -313,6 +352,8 @@ function Shell() {
           )}
         </>
       )}
+
+      {tourAtivo && <Tour steps={tourSteps} setAba={setAba} onFechar={fecharTour} />}
     </div>
   );
 }
