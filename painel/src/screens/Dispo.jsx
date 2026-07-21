@@ -142,9 +142,10 @@ export function Dispo({ dispoApi, agendas }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(320px, 1.3fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
+      {/* Calendário com largura-teto (não estica em telas largas — tamanho padrão). */}
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(300px, 600px) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
       {/* calendário */}
-      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', width: '100%', maxWidth: '600px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <button onClick={() => navegar(-1)} style={navBtn}>‹</button>
           <span style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '18px', color: 'var(--fg)' }}>

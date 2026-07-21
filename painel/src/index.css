@@ -49,6 +49,19 @@ input, select, textarea { font-family: 'Hanken Grotesk', sans-serif; }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--fg) 32%, transparent); }
 /* Login (fundo laranja): placeholder branco e espaçado, como no protótipo. */
 #login-scr input::placeholder { color: rgba(255,255,255,.7); letter-spacing: .12em; }
+/* Bug do autofill do navegador: o Chrome pinta o campo preenchido com fundo
+   branco e texto escuro, quebrando o visual translúcido sobre o laranja. Aqui
+   forçamos o fundo (via box-shadow inset na cor do login) e o texto branco. */
+#login-scr input:-webkit-autofill,
+#login-scr input:-webkit-autofill:hover,
+#login-scr input:-webkit-autofill:focus,
+#login-scr input:-webkit-autofill:active {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px #d88a10 inset;
+  box-shadow: 0 0 0 1000px #d88a10 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
 input:focus, textarea:focus, select:focus { outline: none; }
 
 @keyframes sdFade { from { opacity: 0; } to { opacity: 1; } }
