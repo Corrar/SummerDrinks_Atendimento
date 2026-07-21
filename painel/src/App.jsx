@@ -13,6 +13,7 @@ import { useAgendas } from './hooks/useAgendas.js';
 import { useDispo } from './hooks/useDispo.js';
 import { useCatalogo } from './hooks/useCatalogo.js';
 import { useViewport } from './hooks/useViewport.js';
+import { useAberto } from './hooks/useAberto.js';
 
 const NOME_TRAILER = 'Summer Drinks';
 
@@ -40,6 +41,7 @@ function Shell() {
   const [aba, setAba] = useState('pdv');
   const [tema, setTema] = useState(() => localStorage.getItem('sdp_tema') || 'Noturno');
   const { isMobile } = useViewport();
+  const { aberto } = useAberto(autenticado);
 
   // hooks só pollam quando autenticado (agendas também alimentam a ocupação da Dispo)
   const ordersApi = useOrders(autenticado);
@@ -159,13 +161,21 @@ function Shell() {
             </div>
           )}
 
-          {/* status aberto — oculto no mobile */}
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '9px 14px', borderRadius: '11px' }} className="sd-status">
-              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'var(--accent2)', boxShadow: '0 0 8px var(--accent2)' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600 }}>Aberto</span>
-            </div>
-          )}
+          {/* status aberto/fechado — segue os horários (Ajustes). Oculto no mobile. */}
+          {!isMobile && (() => {
+            const fechado = aberto === false;
+            const cor = fechado ? '#e2615a' : 'var(--accent2)';
+            return (
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '9px 14px', borderRadius: '11px' }}
+                className="sd-status"
+                title="Segue os horários de atendimento definidos em Ajustes"
+              >
+                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: cor, boxShadow: `0 0 8px ${cor}` }} />
+                <span style={{ fontSize: '13px', fontWeight: 600 }}>{fechado ? 'Fechado' : 'Aberto'}</span>
+              </div>
+            );
+          })()}
         </div>
       </header>
 
