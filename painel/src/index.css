@@ -5,6 +5,9 @@
    ============================================================ */
 
 *, *::before, *::after { box-sizing: border-box; }
+/* color-scheme: sinaliza que o app controla o próprio tema, desligando o
+   "Auto Dark Theme" do Chrome/Android que reescrevia as cores do login. */
+html { color-scheme: light dark; }
 html, body { margin: 0; padding: 0; }
 
 body {
