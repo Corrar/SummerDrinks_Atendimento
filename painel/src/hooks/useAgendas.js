@@ -45,5 +45,11 @@ export function useAgendas(ativo = true) {
     await recarregar();
   }, [recarregar]);
 
-  return { agendas, carregando, erro, recarregar, transicionar, orcar };
+  const criar = useCallback(async (dados) => {
+    const nova = await api.criarAgenda(dados);
+    await recarregar();
+    return nova;
+  }, [recarregar]);
+
+  return { agendas, carregando, erro, recarregar, transicionar, orcar, criar };
 }

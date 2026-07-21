@@ -187,10 +187,13 @@ function Shell() {
           />
         )}
         {abaAtual === 'agenda' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
-            <Agenda agendas={agendasApi.agendas} transicionar={agendasApi.transicionar} orcar={agendasApi.orcar} />
-            <Dispo dispoApi={dispoApi} agendas={agendasApi.agendas} />
-          </div>
+          <Agenda
+            agendas={agendasApi.agendas}
+            transicionar={agendasApi.transicionar}
+            orcar={agendasApi.orcar}
+            criar={agendasApi.criar}
+            dispoApi={dispoApi}
+          />
         )}
         {abaAtual === 'cardapio' && <CardapioView itens={catalogoApi.itens} />}
         {abaAtual === 'editor' && (

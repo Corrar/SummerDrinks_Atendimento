@@ -119,7 +119,6 @@ export function Dispo({ dispoApi, agendas }) {
   }
 
   return (
-    <div style={{ padding: '0 28px 28px', maxWidth: '1200px', margin: '0 auto' }}>
      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', padding: '22px 24px' }}>
       {/* cabeçalho da seção */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -233,7 +232,6 @@ export function Dispo({ dispoApi, agendas }) {
       </div>
       </div>
      </div>
-    </div>
   );
 }
 

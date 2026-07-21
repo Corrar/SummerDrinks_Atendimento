@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api.js';
+import { Dispo } from './Dispo.jsx';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const TIPO_COR = { 'Aniversário': '#ff5da2', 'Casamento': '#f5a623', 'Corporativo': '#4aa8d8', 'Formatura': '#b07be0', 'Confraternização': '#7cc142', 'Festa Particular': '#3fcaa8', 'Outro': '#a99a83' };
@@ -35,13 +37,15 @@ const pill = (cor) => ({ fontSize: '10.5px', fontWeight: 700, padding: '4px 11px
  * Transições (agendar/confirmar/recusar) e orçamento chamam o backend; quem veio
  * do app recebe a notificação via outbox automaticamente.
  */
-export function Agenda({ agendas, transicionar, orcar }) {
+export function Agenda({ agendas, transicionar, orcar, criar, dispoApi }) {
   const [filtro, setFiltro] = useState('todas');
   const [expandido, setExpandido] = useState(null);
   const [recusando, setRecusando] = useState(null);
   const [motivo, setMotivo] = useState('');
   const [orcando, setOrcando] = useState(null);
   const [valorEdit, setValorEdit] = useState('');
+  const [novaOpen, setNovaOpen] = useState(false);
+  const [ceOpen, setCeOpen] = useState(false);
 
   const porData = (a, b) => (a.data + (a.hora || '')).localeCompare(b.data + (b.hora || ''));
   const solicitados = useMemo(() => agendas.filter((a) => a.status === 'solicitado').slice().sort(porData), [agendas]);
@@ -84,9 +88,15 @@ export function Agenda({ agendas, transicionar, orcar }) {
   return (
     <div style={{ padding: '24px 28px', maxWidth: '1200px', margin: '0 auto' }}>
       {/* cabeçalho */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Gerenciar agenda</div>
-        <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '6px' }}>{solicitados.length} solicitações pendentes · {nAgendadas} agendas aceitas · {nConfirmadas} confirmadas</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Gerenciar agenda</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '6px' }}>{solicitados.length} solicitações pendentes · {nAgendadas} agendas aceitas · {nConfirmadas} confirmadas</div>
+        </div>
+        <div style={{ display: 'flex', gap: '9px', flexWrap: 'wrap' }}>
+          <button onClick={() => setCeOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '11px', padding: '12px 18px', fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}><span style={{ color: 'var(--accent)' }}>★</span> Criar cardápio</button>
+          <button onClick={() => setNovaOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '11px', padding: '12px 18px', fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}>+ Nova agenda</button>
+        </div>
       </div>
 
       {/* hero: próximo evento */}
@@ -132,6 +142,13 @@ export function Agenda({ agendas, transicionar, orcar }) {
         <div style={{ borderRadius: '22px', border: '1px dashed var(--border)', background: 'var(--surface)', padding: '30px 28px', marginBottom: '24px', textAlign: 'center' }}>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '18px' }}>Nenhum evento agendado</div>
           <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '6px' }}>Aceite uma solicitação abaixo para ver o próximo evento aqui.</div>
+        </div>
+      )}
+
+      {/* disponibilidade no app do cliente (entre o hero e as solicitações, como no protótipo) */}
+      {dispoApi && (
+        <div style={{ marginBottom: '24px' }}>
+          <Dispo dispoApi={dispoApi} agendas={agendas} />
         </div>
       )}
 
@@ -182,7 +199,137 @@ export function Agenda({ agendas, transicionar, orcar }) {
           </div>
         </div>
       )}
+
+      {novaOpen && <NovaAgendaModal onClose={() => setNovaOpen(false)} criar={criar} />}
+      {ceOpen && <CardapiosEventoModal onClose={() => setCeOpen(false)} />}
     </div>
+  );
+}
+
+const modalInp = { width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '11px 13px', color: 'var(--fg)', fontSize: '14px', outline: 'none' };
+const modalRotulo = { fontSize: '10.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 600, marginBottom: '5px', display: 'block' };
+
+function ModalCasca({ titulo, onClose, children, largura = '520px' }) {
+  return (
+    <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: 'fixed', inset: 0, zIndex: 47, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '22px', animation: 'sdFade .18s ease' }}>
+      <div style={{ width: '100%', maxWidth: largura, maxHeight: '88vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,.5)', animation: 'sdModalIn .28s cubic-bezier(.2,1,.3,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '20px', letterSpacing: '-.01em' }}>{titulo}</div>
+          <button onClick={onClose} style={{ flex: 'none', width: '36px', height: '36px', borderRadius: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '15px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+        </div>
+        <div className="sd-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const TIPOS = ['Aniversário', 'Casamento', 'Corporativo', 'Formatura', 'Confraternização', 'Festa Particular', 'Outro'];
+const SLOTS_EV = ['Tarde', 'Noite', 'Madrugada'];
+
+// Nova agenda (origem gestão) → POST /agendas via `criar`.
+function NovaAgendaModal({ onClose, criar }) {
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const [f, setF] = useState({ nome: '', telefone: '', email: '', tipo: 'Aniversário', data: hojeIso, slot: 'Noite', pessoas: '', local: '', obs: '' });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+  const set = (patch) => setF((x) => ({ ...x, ...patch }));
+
+  async function salvar() {
+    if (!f.nome.trim() || f.telefone.replace(/\D/g, '').length < 8) { setErro('Preencha nome e um telefone válido.'); return; }
+    setSalvando(true); setErro('');
+    try {
+      await criar({ nome: f.nome.trim(), telefone: f.telefone.trim(), email: f.email.trim(), tipo: f.tipo, data: f.data, slot: f.slot, pessoas: Number(f.pessoas) || 0, local: f.local.trim(), obs: f.obs.trim() });
+      onClose();
+    } catch (e) {
+      setErro(e?.message || 'Não foi possível criar a agenda.');
+    } finally { setSalvando(false); }
+  }
+
+  return (
+    <ModalCasca titulo="Nova agenda" onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '13px' }}>
+        <div><label style={modalRotulo}>Cliente</label><input value={f.nome} onChange={(e) => set({ nome: e.target.value })} placeholder="Nome do cliente" style={modalInp} autoFocus /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div><label style={modalRotulo}>Telefone</label><input value={f.telefone} onChange={(e) => set({ telefone: e.target.value })} placeholder="(81) 90000-0000" style={modalInp} /></div>
+          <div><label style={modalRotulo}>E-mail (opcional)</label><input value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="cliente@email.com" style={modalInp} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div><label style={modalRotulo}>Tipo</label><select value={f.tipo} onChange={(e) => set({ tipo: e.target.value })} style={{ ...modalInp, cursor: 'pointer' }}>{TIPOS.map((t) => <option key={t}>{t}</option>)}</select></div>
+          <div><label style={modalRotulo}>Convidados</label><input type="number" min="0" value={f.pessoas} onChange={(e) => set({ pessoas: e.target.value })} placeholder="0" style={modalInp} /></div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div><label style={modalRotulo}>Data</label><input type="date" min={hojeIso} value={f.data} onChange={(e) => set({ data: e.target.value })} style={modalInp} /></div>
+          <div><label style={modalRotulo}>Período</label><select value={f.slot} onChange={(e) => set({ slot: e.target.value })} style={{ ...modalInp, cursor: 'pointer' }}>{SLOTS_EV.map((s) => <option key={s}>{s}</option>)}</select></div>
+        </div>
+        <div><label style={modalRotulo}>Local</label><input value={f.local} onChange={(e) => set({ local: e.target.value })} placeholder="Endereço / referência do evento" style={modalInp} /></div>
+        <div><label style={modalRotulo}>Observação</label><textarea value={f.obs} onChange={(e) => set({ obs: e.target.value })} rows={2} placeholder="Pacote, bebidas, estrutura, pendências..." style={{ ...modalInp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.45 }} /></div>
+        {erro && <div style={{ fontSize: '12.5px', color: '#ff927d', fontWeight: 600 }}>{erro}</div>}
+        <div style={{ display: 'flex', gap: '9px', marginTop: '2px' }}>
+          <button onClick={salvar} disabled={salvando} style={{ flex: 1, background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '11px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>{salvando ? 'Criando…' : 'Criar agenda'}</button>
+          <button onClick={onClose} style={{ flex: 'none', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '11px', padding: '13px 18px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      </div>
+    </ModalCasca>
+  );
+}
+
+// Cardápios de evento — gerencia config.cardapiosEvento (mesma fonte da aba Ajustes).
+function CardapiosEventoModal({ onClose }) {
+  const [form, setForm] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState('');
+
+  useEffect(() => {
+    let vivo = true;
+    api.lerConfig().then((c) => { if (vivo) setForm(c); }).catch(() => { if (vivo) setAviso('Não foi possível carregar os cardápios.'); });
+    return () => { vivo = false; };
+  }, []);
+
+  const ce = () => form?.cardapiosEvento || [];
+  const setCe = (lista) => setForm((f) => ({ ...f, cardapiosEvento: lista }));
+  const add = () => setCe([...ce(), { id: 'ce' + Date.now(), nome: 'Novo cardápio', itens: '' }]);
+  const edit = (id, patch) => setCe(ce().map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const rm = (id) => setCe(ce().filter((c) => c.id !== id));
+
+  async function salvar() {
+    if (!form || salvando) return;
+    setSalvando(true); setAviso('');
+    try {
+      const salvo = await api.salvarConfig({ ...form, cardapiosEvento: ce() });
+      setForm(salvo);
+      setAviso('Cardápios salvos.');
+    } catch (e) {
+      setAviso(e?.codigo === 'CONFLITO_VERSAO' ? 'Outro operador salvou antes — reabra e tente de novo.' : (e?.message || 'Não foi possível salvar.'));
+    } finally { setSalvando(false); }
+  }
+
+  return (
+    <ModalCasca titulo="★ Cardápios de evento" onClose={onClose}>
+      {!form ? (
+        <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '14px 0', textAlign: 'center' }}>Carregando…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Presets oferecidos como atalho quando o cliente solicita um evento (também editáveis em Ajustes).</div>
+          {ce().length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '13px', padding: '14px 0' }}>Nenhum cardápio de evento ainda.</div>}
+          {ce().map((c) => (
+            <div key={c.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '13px', padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--accent)', fontSize: '15px' }}>★</span>
+                <input value={c.nome} onChange={(e) => edit(c.id, { nome: e.target.value })} placeholder="Nome do cardápio (ex.: Festa Tropical)" style={{ ...modalInp, fontWeight: 600, background: 'var(--surface)' }} />
+                <button onClick={() => rm(c.id)} title="Excluir" style={{ flex: 'none', width: '34px', height: '34px', borderRadius: '9px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#e2615a', fontSize: '13px', cursor: 'pointer' }}>🗑</button>
+              </div>
+              <textarea value={c.itens} onChange={(e) => edit(c.id, { itens: e.target.value })} rows={2} placeholder="Drinks incluídos..." style={{ ...modalInp, background: 'var(--surface)', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }} />
+            </div>
+          ))}
+          <button onClick={add} style={{ background: 'none', border: '1.5px dashed var(--border)', color: 'var(--muted)', borderRadius: '13px', padding: '14px', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}>+ Novo cardápio</button>
+          {aviso && <div style={{ fontSize: '12.5px', color: aviso.includes('salvos') ? 'var(--accent2)' : '#ff927d', fontWeight: 600 }}>{aviso}</div>}
+          <div style={{ display: 'flex', gap: '9px' }}>
+            <button onClick={salvar} disabled={salvando} style={{ flex: 1, background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '11px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar cardápios'}</button>
+            <button onClick={onClose} style={{ flex: 'none', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '11px', padding: '13px 18px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Fechar</button>
+          </div>
+        </div>
+      )}
+    </ModalCasca>
   );
 }
 

@@ -145,6 +145,9 @@ export const api = {
     const qs = q.toString();
     return chamar(`/agendas${qs ? `?${qs}` : ''}`);
   },
+  // Cria um evento pela própria operação (origem 'gestao'). Body:
+  // { nome, telefone, email?, tipo, pessoas, local, obs, data (YYYY-MM-DD), slot }.
+  criarAgenda: (dados) => chamar('/agendas', { method: 'POST', body: dados }),
   orcarAgenda: (id, valor) => chamar(`/agendas/${id}/valor`, { method: 'PATCH', body: { valor } }),
   statusAgenda: (id, status, motivo) =>
     chamar(`/agendas/${id}/status`, { method: 'PATCH', body: motivo ? { status, motivo } : { status } }),
