@@ -46,7 +46,8 @@ export const AgendaService = {
     if (filtro.de)     { args.push(filtro.de);     cond.push(`data >= $${args.length}`) }
     if (filtro.ate)    { args.push(filtro.ate);    cond.push(`data <= $${args.length}`) }
     const r = await pool.query<AgendaComContato>(
-      `SELECT ${COLS_BASE}, telefone, email
+      // motivo_recusa incluído para a gestão reexibir o que foi enviado ao cliente.
+      `SELECT ${COLS_BASE}, telefone, email, motivo_recusa
          FROM agenda WHERE ${cond.join(' AND ')} ORDER BY data, hora`,
       args,
     )

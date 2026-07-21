@@ -68,10 +68,13 @@ export const AuthService = {
   /** Valida credenciais e emite tokens. Erro genérico em qualquer falha. */
   async login(input: LoginInput): Promise<ResultadoLogin> {
     const r = await pool.query<LinhaUsuario>(
+      // login é case-insensitive: o cadastro grava em minúsculas (usuariosRouter),
+      // então a autenticação também normaliza — senão um login com maiúscula
+      // digitado exatamente como cadastrado nunca casaria.
       `SELECT u.id, u.tenant_id, u.hash, u.papel, u.ativo
          FROM usuario u
          JOIN tenant t ON t.id = u.tenant_id
-        WHERE t.slug = $1 AND u.login = $2`,
+        WHERE t.slug = $1 AND lower(u.login) = lower($2)`,
       [input.tenantSlug, input.usuario],
     )
     const usr = r.rows[0]

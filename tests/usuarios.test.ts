@@ -5,7 +5,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 
-vi.mock('../src/db/pool.js', () => ({ pool: { query: vi.fn() }, withTransaction: vi.fn() }))
+// withTransaction roda o callback com um "tx" que delega ao MESMO mock de query,
+// então a sequência de mockResolvedValueOnce alimenta as queries dentro da tx.
+const { q } = vi.hoisted(() => ({ q: vi.fn() }))
+vi.mock('../src/db/pool.js', () => ({
+  pool: { query: q },
+  withTransaction: async (fn: (tx: { query: typeof q }) => unknown) => fn({ query: q }),
+}))
 vi.mock('bcryptjs', () => ({ default: { hash: vi.fn(async () => 'HASH') } }))
 
 import { criarApp } from '../src/app.js'
@@ -69,7 +75,7 @@ describe('usuários — guard do último admin ativo', () => {
   it('rebaixar o último admin ativo → 409 ULTIMO_ADMIN', async () => {
     vi.mocked(pool.query)
       .mockResolvedValueOnce({ rows: [{ id: 'u1', login: 'admin', papel: 'gestao', ativo: true }], rowCount: 1 } as never) // SELECT alvo
-      .mockResolvedValueOnce({ rows: [{ n: '0' }], rowCount: 1 } as never) // contarAdminsAtivos exclui u1 = 0
+      .mockResolvedValueOnce({ rows: [{ id: 'u1' }], rowCount: 1 } as never) // FOR UPDATE: só u1 é admin ativo → exceto=0
     const r = await request(app).patch('/usuarios/u1').set(bearer('gestao')).send({ papel: 'pdv' })
     expect(r.status).toBe(409)
     expect(r.body.codigo).toBe('ULTIMO_ADMIN')
@@ -78,7 +84,7 @@ describe('usuários — guard do último admin ativo', () => {
   it('excluir o último admin ativo → 409', async () => {
     vi.mocked(pool.query)
       .mockResolvedValueOnce({ rows: [{ id: 'u1', login: 'admin', papel: 'gestao', ativo: true }], rowCount: 1 } as never)
-      .mockResolvedValueOnce({ rows: [{ n: '0' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'u1' }], rowCount: 1 } as never)
     const r = await request(app).delete('/usuarios/u1').set(bearer('gestao'))
     expect(r.status).toBe(409)
     expect(r.body.codigo).toBe('ULTIMO_ADMIN')
@@ -87,7 +93,7 @@ describe('usuários — guard do último admin ativo', () => {
   it('desativar quando há OUTRO admin ativo → 200', async () => {
     vi.mocked(pool.query)
       .mockResolvedValueOnce({ rows: [{ id: 'u1', login: 'admin', papel: 'gestao', ativo: true }], rowCount: 1 } as never) // alvo
-      .mockResolvedValueOnce({ rows: [{ n: '1' }], rowCount: 1 } as never) // ainda há 1 admin ativo além do alvo
+      .mockResolvedValueOnce({ rows: [{ id: 'u1' }, { id: 'u2' }], rowCount: 2 } as never) // FOR UPDATE: u2 continua admin ativo
       .mockResolvedValueOnce({ rows: [{ id: 'u1', login: 'admin', papel: 'gestao', ativo: false }], rowCount: 1 } as never) // UPDATE
     const r = await request(app).patch('/usuarios/u1').set(bearer('gestao')).send({ ativo: false })
     expect(r.status).toBe(200)

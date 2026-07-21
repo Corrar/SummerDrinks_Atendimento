@@ -5,7 +5,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { pool } from '../../db/pool.js'
+import { pool, withTransaction, type Tx } from '../../db/pool.js'
 import { exigirPapel } from '../middleware/auth.js'
 import { validarBody } from '../middleware/validate.js'
 import { ErroDominio } from '../../types/domain.js'
@@ -45,14 +45,21 @@ interface LinhaUsuario {
 
 const SEL = 'id, login, papel, ativo'
 
-async function contarAdminsAtivos(tenant: string, exclui?: string): Promise<number> {
-  const r = await pool.query<{ n: string }>(
-    `SELECT count(*)::text AS n FROM usuario
+/**
+ * Trava (FOR UPDATE) TODAS as linhas de admin ativo do tenant e conta quantas
+ * existem além de `exclui`. Rodando dentro de uma transação, isto serializa
+ * operações concorrentes que afetam admins: a 2ª bloqueia até a 1ª commitar e
+ * então relê a contagem já atualizada — fecha a corrida (TOCTOU) do "último
+ * admin". Precisa rodar no MESMO tx da mutação seguinte.
+ */
+async function adminsAtivosExceto(tx: Tx, tenant: string, exclui: string): Promise<number> {
+  const r = await tx.query<{ id: string }>(
+    `SELECT id FROM usuario
       WHERE tenant_id = $1 AND papel = 'gestao' AND ativo = true
-        AND ($2::text IS NULL OR id <> $2)`,
-    [tenant, exclui ?? null],
+      FOR UPDATE`,
+    [tenant],
   )
-  return Number(r.rows[0]?.n ?? 0)
+  return r.rows.filter((x) => x.id !== exclui).length
 }
 
 // GET /usuarios — lista (sem hash).
@@ -104,34 +111,39 @@ usuariosRouter.patch(
     const tenant = req.auth!.tenant
     const id = String(req.params.id)
     const body = req.body as z.infer<typeof atualizarSchema>
+    // Pré-computa o hash FORA da tx (bcrypt é caro; não segurar a trava por isso).
+    const novoHash = body.senha !== undefined ? await bcrypt.hash(body.senha, 12) : null
 
-    const atualR = await pool.query<LinhaUsuario>(
-      `SELECT ${SEL} FROM usuario WHERE tenant_id = $1 AND id = $2`,
-      [tenant, id],
-    )
-    const atual = atualR.rows[0]
-    if (!atual) throw new ErroDominio('USUARIO_NAO_ENCONTRADO', 'Usuário não encontrado.', 404)
+    const row = await withTransaction(async (tx) => {
+      const atualR = await tx.query<LinhaUsuario>(
+        `SELECT ${SEL} FROM usuario WHERE tenant_id = $1 AND id = $2`,
+        [tenant, id],
+      )
+      const atual = atualR.rows[0]
+      if (!atual) throw new ErroDominio('USUARIO_NAO_ENCONTRADO', 'Usuário não encontrado.', 404)
 
-    // Rebaixar papel ou desativar o último admin ativo → proibido.
-    const deixariaDeSerAdminAtivo =
-      (body.papel !== undefined && body.papel !== 'gestao' && atual.papel === 'gestao' && atual.ativo) ||
-      (body.ativo === false && atual.papel === 'gestao' && atual.ativo)
-    if (deixariaDeSerAdminAtivo && (await contarAdminsAtivos(tenant, id)) === 0) {
-      throw new ErroDominio('ULTIMO_ADMIN', 'Deve restar ao menos um administrador ativo.', 409)
-    }
+      // Rebaixar papel ou desativar o último admin ativo → proibido (guard atômico).
+      const deixariaDeSerAdminAtivo =
+        (body.papel !== undefined && body.papel !== 'gestao' && atual.papel === 'gestao' && atual.ativo) ||
+        (body.ativo === false && atual.papel === 'gestao' && atual.ativo)
+      if (deixariaDeSerAdminAtivo && (await adminsAtivosExceto(tx, tenant, id)) === 0) {
+        throw new ErroDominio('ULTIMO_ADMIN', 'Deve restar ao menos um administrador ativo.', 409)
+      }
 
-    const sets: string[] = []
-    const params: unknown[] = [tenant, id]
-    if (body.papel !== undefined) { params.push(body.papel); sets.push(`papel = $${params.length}`) }
-    if (body.ativo !== undefined) { params.push(body.ativo); sets.push(`ativo = $${params.length}`) }
-    if (body.senha !== undefined) { params.push(await bcrypt.hash(body.senha, 12)); sets.push(`hash = $${params.length}`) }
-    if (!sets.length) { res.json(atual); return }
+      const sets: string[] = []
+      const params: unknown[] = [tenant, id]
+      if (body.papel !== undefined) { params.push(body.papel); sets.push(`papel = $${params.length}`) }
+      if (body.ativo !== undefined) { params.push(body.ativo); sets.push(`ativo = $${params.length}`) }
+      if (novoHash !== null) { params.push(novoHash); sets.push(`hash = $${params.length}`) }
+      if (!sets.length) return atual
 
-    const r = await pool.query<LinhaUsuario>(
-      `UPDATE usuario SET ${sets.join(', ')} WHERE tenant_id = $1 AND id = $2 RETURNING ${SEL}`,
-      params,
-    )
-    res.json(r.rows[0])
+      const r = await tx.query<LinhaUsuario>(
+        `UPDATE usuario SET ${sets.join(', ')} WHERE tenant_id = $1 AND id = $2 RETURNING ${SEL}`,
+        params,
+      )
+      return r.rows[0]
+    })
+    res.json(row)
   }),
 )
 
@@ -142,16 +154,18 @@ usuariosRouter.delete(
   asy(async (req, res) => {
     const tenant = req.auth!.tenant
     const id = String(req.params.id)
-    const alvoR = await pool.query<LinhaUsuario>(
-      `SELECT ${SEL} FROM usuario WHERE tenant_id = $1 AND id = $2`,
-      [tenant, id],
-    )
-    const alvo = alvoR.rows[0]
-    if (!alvo) throw new ErroDominio('USUARIO_NAO_ENCONTRADO', 'Usuário não encontrado.', 404)
-    if (alvo.papel === 'gestao' && alvo.ativo && (await contarAdminsAtivos(tenant, id)) === 0) {
-      throw new ErroDominio('ULTIMO_ADMIN', 'Deve restar ao menos um administrador ativo.', 409)
-    }
-    await pool.query(`DELETE FROM usuario WHERE tenant_id = $1 AND id = $2`, [tenant, id])
+    await withTransaction(async (tx) => {
+      const alvoR = await tx.query<LinhaUsuario>(
+        `SELECT ${SEL} FROM usuario WHERE tenant_id = $1 AND id = $2`,
+        [tenant, id],
+      )
+      const alvo = alvoR.rows[0]
+      if (!alvo) throw new ErroDominio('USUARIO_NAO_ENCONTRADO', 'Usuário não encontrado.', 404)
+      if (alvo.papel === 'gestao' && alvo.ativo && (await adminsAtivosExceto(tx, tenant, id)) === 0) {
+        throw new ErroDominio('ULTIMO_ADMIN', 'Deve restar ao menos um administrador ativo.', 409)
+      }
+      await tx.query(`DELETE FROM usuario WHERE tenant_id = $1 AND id = $2`, [tenant, id])
+    })
     res.json({ ok: true })
   }),
 )

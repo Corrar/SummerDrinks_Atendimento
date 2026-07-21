@@ -73,64 +73,13 @@ export function Agenda({ agendas, transicionar, orcar }) {
 
   const filtros = [['todas', 'Todas', aceitasFull.length], ['agendadas', 'Agendadas', nAgendadas], ['confirmadas', 'Confirmadas', nConfirmadas], ['recusadas', 'Recusadas', recusadas.length]];
 
-  function Card({ a, quickActions = false }) {
-    const meta = STATUS_META[a.status] || STATUS_META.solicitado;
-    const aberto = expandido === a.id;
-    return (
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
-        <button
-          onClick={() => setExpandido(aberto ? null : a.id)}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', background: 'transparent', border: 'none', textAlign: 'left' }}
-        >
-          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: TIPO_COR[a.tipo] || 'var(--accent)', flex: '0 0 auto' }} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontWeight: 800, fontSize: '15px', color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {a.cliente} <span style={{ fontWeight: 600, color: 'var(--muted)' }}>· {a.tipo}</span>
-            </span>
-            <span style={{ display: 'block', fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>
-              {dataFmt(a)} · {a.hora} · {a.pessoas} pessoas{a.origem === 'app_cliente' ? ' · via app' : ''}
-            </span>
-          </span>
-          <span style={{ textAlign: 'right', flex: '0 0 auto' }}>
-            <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', padding: '4px 11px', borderRadius: '999px', color: meta.cor, background: `color-mix(in srgb,${meta.cor} 16%,transparent)`, border: `1px solid color-mix(in srgb,${meta.cor} 42%,transparent)` }}>{meta.rotulo}</span>
-            <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>{countdown(a)}</span>
-          </span>
-        </button>
-
-        {(quickActions || aberto) && (
-          <div style={{ padding: '0 16px 15px', borderTop: '1px solid var(--border)' }}>
-            {aberto && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', padding: '12px 0', fontSize: '13px', color: 'var(--fg)' }}>
-                <Info k="Telefone" v={a.telefone || '—'} />
-                <Info k="E-mail" v={a.email || '—'} />
-                <Info k="Local" v={a.local || '—'} />
-                <Info k="Protocolo" v={a.protocolo || '—'} />
-                <Info k="Valor" v={a.valor && Number(a.valor) > 0 ? brl(a.valor) : 'A combinar'} />
-                {a.obs ? <Info k="Obs" v={a.obs} /> : null}
-                {a.status === 'recusado' && a.motivo_recusa ? <Info k="Motivo" v={a.motivo_recusa} /> : null}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingTop: aberto ? 0 : '12px' }}>
-              {a.status === 'solicitado' && <button onClick={() => transicionar(a.id, 'agendado')} style={btn('#4aa8d8', '#fff')}>Agendar</button>}
-              {a.status === 'agendado' && <button onClick={() => transicionar(a.id, 'confirmado')} style={btn('#7cc142')}>Confirmar</button>}
-              {(a.status === 'solicitado' || a.status === 'agendado') && <button onClick={() => { setRecusando(a); setMotivo(''); }} style={btn('#e23b3b', '#fff')}>Recusar</button>}
-              {orcando === a.id ? (
-                <span style={{ display: 'inline-flex', gap: '6px' }}>
-                  <input value={valorEdit} onChange={(e) => setValorEdit(e.target.value)} placeholder="Valor R$" autoFocus style={{ width: '110px', padding: '8px 10px', borderRadius: '10px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13px', fontWeight: 700 }} />
-                  <button onClick={() => salvarValor(a.id)} style={btn('var(--accent)', 'var(--onAccent)')}>OK</button>
-                </span>
-              ) : (a.status !== 'recusado' && (
-                <button onClick={() => { setOrcando(a.id); setValorEdit(a.valor && Number(a.valor) > 0 ? String(a.valor) : ''); }} style={btn('var(--surface2)', 'var(--fg)')}>Orçar</button>
-              ))}
-              {a.telefone && (
-                <a href={'tel:' + a.telefone.replace(/[^0-9+]/g, '')} style={{ ...btn('var(--surface2)', 'var(--fg)'), textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Ligar</a>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+  // Handlers/estado compartilhados com o AgendaCard (definido no escopo do
+  // módulo, para não remontar a lista a cada tecla/poll).
+  const ctx = {
+    expandido, setExpandido, transicionar,
+    orcando, setOrcando, valorEdit, setValorEdit, salvarValor,
+    abrirRecusa: (a) => { setRecusando(a); setMotivo(''); },
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -146,7 +95,7 @@ export function Agenda({ agendas, transicionar, orcar }) {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {solicitados.map((a) => <Card key={a.id} a={a} quickActions />)}
+            {solicitados.map((a) => <AgendaCard key={a.id} a={a} quickActions ctx={ctx} />)}
           </div>
         )}
       </section>
@@ -195,7 +144,7 @@ export function Agenda({ agendas, transicionar, orcar }) {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {aceitas.map((a) => <Card key={a.id} a={a} />)}
+            {aceitas.map((a) => <AgendaCard key={a.id} a={a} ctx={ctx} />)}
           </div>
         )}
       </section>
@@ -228,6 +177,67 @@ export function Agenda({ agendas, transicionar, orcar }) {
 }
 
 const btn = (bg, fg = '#1a1206') => ({ border: 'none', borderRadius: '10px', padding: '9px 13px', background: bg, color: fg, fontWeight: 800, fontSize: '12.5px' });
+
+// No escopo do MÓDULO (identidade estável): não remonta a lista a cada render/poll.
+function AgendaCard({ a, quickActions = false, ctx }) {
+  const { expandido, setExpandido, transicionar, orcando, setOrcando, valorEdit, setValorEdit, salvarValor, abrirRecusa } = ctx;
+  const meta = STATUS_META[a.status] || STATUS_META.solicitado;
+  const aberto = expandido === a.id;
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
+      <button
+        onClick={() => setExpandido(aberto ? null : a.id)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', background: 'transparent', border: 'none', textAlign: 'left' }}
+      >
+        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: TIPO_COR[a.tipo] || 'var(--accent)', flex: '0 0 auto' }} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontWeight: 800, fontSize: '15px', color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {a.cliente} <span style={{ fontWeight: 600, color: 'var(--muted)' }}>· {a.tipo}</span>
+          </span>
+          <span style={{ display: 'block', fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>
+            {dataFmt(a)} · {a.hora} · {a.pessoas} pessoas{a.origem === 'app_cliente' ? ' · via app' : ''}
+          </span>
+        </span>
+        <span style={{ textAlign: 'right', flex: '0 0 auto' }}>
+          <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', padding: '4px 11px', borderRadius: '999px', color: meta.cor, background: `color-mix(in srgb,${meta.cor} 16%,transparent)`, border: `1px solid color-mix(in srgb,${meta.cor} 42%,transparent)` }}>{meta.rotulo}</span>
+          <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>{countdown(a)}</span>
+        </span>
+      </button>
+
+      {(quickActions || aberto) && (
+        <div style={{ padding: '0 16px 15px', borderTop: '1px solid var(--border)' }}>
+          {aberto && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', padding: '12px 0', fontSize: '13px', color: 'var(--fg)' }}>
+              <Info k="Telefone" v={a.telefone || '—'} />
+              <Info k="E-mail" v={a.email || '—'} />
+              <Info k="Local" v={a.local || '—'} />
+              <Info k="Protocolo" v={a.protocolo || '—'} />
+              <Info k="Valor" v={a.valor && Number(a.valor) > 0 ? brl(a.valor) : 'A combinar'} />
+              {a.obs ? <Info k="Obs" v={a.obs} /> : null}
+              {a.status === 'recusado' && a.motivo_recusa ? <Info k="Motivo" v={a.motivo_recusa} /> : null}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingTop: aberto ? 0 : '12px' }}>
+            {a.status === 'solicitado' && <button onClick={() => transicionar(a.id, 'agendado')} style={btn('#4aa8d8', '#fff')}>Agendar</button>}
+            {a.status === 'agendado' && <button onClick={() => transicionar(a.id, 'confirmado')} style={btn('#7cc142')}>Confirmar</button>}
+            {(a.status === 'solicitado' || a.status === 'agendado') && <button onClick={() => abrirRecusa(a)} style={btn('#e23b3b', '#fff')}>Recusar</button>}
+            {orcando === a.id ? (
+              <span style={{ display: 'inline-flex', gap: '6px' }}>
+                <input value={valorEdit} onChange={(e) => setValorEdit(e.target.value)} placeholder="Valor R$" autoFocus style={{ width: '110px', padding: '8px 10px', borderRadius: '10px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13px', fontWeight: 700 }} />
+                <button onClick={() => salvarValor(a.id)} style={btn('var(--accent)', 'var(--onAccent)')}>OK</button>
+              </span>
+            ) : (a.status !== 'recusado' && (
+              <button onClick={() => { setOrcando(a.id); setValorEdit(a.valor && Number(a.valor) > 0 ? String(a.valor) : ''); }} style={btn('var(--surface2)', 'var(--fg)')}>Orçar</button>
+            ))}
+            {a.telefone && (
+              <a href={'tel:' + a.telefone.replace(/[^0-9+]/g, '')} style={{ ...btn('var(--surface2)', 'var(--fg)'), textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Ligar</a>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Info({ k, v }) {
   return (

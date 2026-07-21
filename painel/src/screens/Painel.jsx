@@ -124,7 +124,6 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
                   <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>{o.hora} · {o.pagamento} · {brl(totalDe(o))}</div>
                 </div>
                 <button onClick={() => togglePago(o.senha)} style={pagoPill(o.pago)}>{o.pago ? '✓ Pago' : '○ A receber'}</button>
-                <button onClick={() => marcar(o.senha, 'pronto')} title="Reabrir" style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--muted)', borderRadius: '9px', padding: '7px 11px', fontSize: '11.5px', fontWeight: 700 }}>Reabrir</button>
               </div>
             ))}
           </div>
