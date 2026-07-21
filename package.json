@@ -13,6 +13,7 @@
     "migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
     "seed:menu": "tsx scripts/seed-menu.ts",
+    "usuario:criar": "tsx scripts/criar-usuario.ts",
     "smoke": "tsx scripts/smoke-fase1.ts",
     "smoke:catalogo": "tsx scripts/smoke-catalogo.ts",
     "smoke:agendas": "tsx scripts/smoke-agendas.ts",
