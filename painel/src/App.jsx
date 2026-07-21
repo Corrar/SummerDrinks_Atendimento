@@ -16,12 +16,6 @@ import { useCatalogo } from './hooks/useCatalogo.js';
 
 const NOME_TRAILER = 'Summer Drinks';
 
-// Monograma = iniciais do nome do trailer (espelha monograma() do protótipo).
-function monograma(nome) {
-  const w = (nome || '').split(/\s+/).filter((p) => p.length > 2);
-  return (w.slice(0, 2).map((p) => p[0]).join('') || (nome || '').slice(0, 2)).toUpperCase();
-}
-
 // Abas com rótulos e chaves do protótipo. `dispo` é dobrada dentro de `agenda`.
 const ABAS = [
   { key: 'pdv', rotulo: 'Atendente' },
@@ -69,39 +63,41 @@ function Shell() {
   const permitidas = telasPermitidas(papel);
   const abas = ABAS.filter((a) => permitidas.includes(a.key));
   const abaAtual = permitidas.includes(aba) ? aba : 'pdv';
-  const solicitadas = agendasApi.agendas.filter((a) => a.status === 'solicitado').length;
 
   const papelLabel = papel === 'gestao' ? 'Administrador' : 'Atendente';
   const inicial = (papelLabel[0] || '?').toUpperCase();
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+  // Estilo dos botões de aba — idêntico ao protótipo (mkTab/tabBase).
+  const tabBase = {
+    border: 'none', borderRadius: '9px', padding: '9px 16px', fontSize: '13.5px',
+    fontWeight: 600, cursor: 'pointer', transition: 'all .12s', whiteSpace: 'nowrap',
+    fontFamily: 'Hanken Grotesk',
+  };
 
   return (
     <div className="sd-painel" data-tema={tema} style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--fg)' }}>
       <header
         style={{
-          display: 'flex', alignItems: 'center', gap: '13px', padding: '13px 20px',
-          background: 'var(--headerbg)', borderBottom: '1px solid var(--border)',
-          position: 'sticky', top: 0, zIndex: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+          padding: '14px 24px', background: 'var(--headerbg)', borderBottom: '1px solid var(--border)',
+          position: 'sticky', top: 0, zIndex: 30,
         }}
       >
-        {/* monograma + nome */}
-        <div
-          style={{
-            width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', color: 'var(--onAccent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '15px', flex: '0 0 auto', letterSpacing: '-.5px',
-          }}
-        >
-          {monograma(NOME_TRAILER)}
-        </div>
-        <div style={{ lineHeight: 1.12, marginRight: '6px' }}>
-          <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '17px', color: 'var(--fg)', letterSpacing: '-.3px' }}>
-            {NOME_TRAILER}
+        {/* marca: nome + "Gestão & Senhas" (sem monograma, como no protótipo) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '19px', letterSpacing: '-.02em', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {NOME_TRAILER}
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--muted)', letterSpacing: '.14em', textTransform: 'uppercase', marginTop: '3px' }}>
+              Gestão &amp; Senhas
+            </div>
           </div>
-          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '2.5px', color: 'var(--accent)' }}>ATENDIMENTO</div>
         </div>
 
-        {/* abas */}
-        <nav className="sd-scroll" style={{ display: 'flex', gap: '6px', flex: 1, overflowX: 'auto', padding: '0 4px' }}>
+        {/* abas — dentro de um grupo com borda arredondada (protótipo) */}
+        <nav className="sd-scroll" style={{ display: 'flex', gap: '6px', background: 'var(--surface)', padding: '5px', borderRadius: '13px', border: '1px solid var(--border)', overflowX: 'auto' }}>
           {abas.map((a) => {
             const ativo = abaAtual === a.key;
             return (
@@ -109,58 +105,65 @@ function Shell() {
                 key={a.key}
                 onClick={() => setAba(a.key)}
                 style={{
-                  flex: '0 0 auto', padding: '9px 16px', borderRadius: '9px', border: 'none',
-                  fontSize: '13.5px', fontWeight: 600, fontFamily: 'Hanken Grotesk', whiteSpace: 'nowrap',
+                  ...tabBase,
                   background: ativo ? 'var(--accent)' : 'transparent',
                   color: ativo ? 'var(--onAccent)' : 'var(--muted)',
                 }}
               >
                 {a.rotulo}
-                {a.key === 'agenda' && solicitadas > 0 && (
-                  <span style={{ marginLeft: '7px', background: '#e23b3b', color: '#fff', borderRadius: '999px', padding: '1px 7px', fontSize: '11px', fontWeight: 700 }}>
-                    {solicitadas}
-                  </span>
-                )}
               </button>
             );
           })}
         </nav>
 
-        {/* tema */}
-        <button
-          onClick={toggleTema}
-          title={tema === 'Claro' ? 'Tema escuro' : 'Tema claro'}
-          style={{ border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--fg)', borderRadius: '10px', width: '38px', height: '38px', fontSize: '16px', fontWeight: 700, flex: '0 0 auto' }}
-        >
-          {tema === 'Claro' ? '☾' : '☀'}
-        </button>
-
-        {/* chip de usuário */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', flex: '0 0 auto' }}>
-          <div
-            style={{
-              width: '34px', height: '34px', borderRadius: '50%', background: 'var(--surface2)', color: 'var(--accent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '14px',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {inicial}
+        {/* cluster direito: usuário, tema, sair, data, status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 'none' }}>
+          {/* chip de usuário (ícone à esquerda) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '6px 13px 6px 7px', borderRadius: '11px' }}>
+            <span style={{ width: '28px', height: '28px', flex: 'none', borderRadius: '8px', background: 'var(--accent)', color: 'var(--onAccent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '13px' }}>
+              {inicial}
+            </span>
+            <div style={{ textAlign: 'left' }} className="sd-userchip">
+              <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{papelLabel}</div>
+              <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.09em', marginTop: '2px' }}>{papelLabel}</div>
+            </div>
           </div>
-          <div style={{ lineHeight: 1.1 }} className="sd-userchip">
-            <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--fg)' }}>{papelLabel}</div>
-            <button
-              onClick={logout}
-              style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '11px', fontWeight: 700, padding: 0, cursor: 'pointer' }}
-            >
-              Sair
-            </button>
+
+          {/* tema */}
+          <button
+            onClick={toggleTema}
+            title="Alternar tema claro/escuro"
+            style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '11px', color: 'var(--fg)', fontSize: '17px', cursor: 'pointer', lineHeight: 1 }}
+          >
+            {tema === 'Claro' ? '☾' : '☀'}
+          </button>
+
+          {/* sair */}
+          <button
+            onClick={logout}
+            title="Sair"
+            style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '11px', color: 'var(--muted)', cursor: 'pointer', lineHeight: 1 }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+          </button>
+
+          {/* data de hoje */}
+          <div style={{ textAlign: 'right' }} className="sd-hoje">
+            <div style={{ fontSize: '11.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Hoje</div>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px' }}>{hoje}</div>
+          </div>
+
+          {/* status aberto */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '9px 14px', borderRadius: '11px' }} className="sd-status">
+            <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'var(--accent2)', boxShadow: '0 0 8px var(--accent2)' }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>Aberto</span>
           </div>
         </div>
       </header>
 
-      <main style={{ padding: '18px 20px 40px', maxWidth: '1180px', margin: '0 auto' }}>
+      <main>
         {ordersApi.erro && (
-          <div style={{ background: 'color-mix(in srgb, #e23b3b 14%, transparent)', border: '1px solid #e23b3b', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', fontSize: '13px', fontWeight: 700, color: 'var(--fg)' }}>
+          <div style={{ margin: '14px 28px 0', background: 'color-mix(in srgb, #e23b3b 14%, transparent)', border: '1px solid #e23b3b', borderRadius: '12px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: 'var(--fg)' }}>
             Sem conexão com o servidor — tentando de novo… (última sincronização mantida)
           </div>
         )}

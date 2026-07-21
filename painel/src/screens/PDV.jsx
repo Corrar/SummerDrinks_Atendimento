@@ -74,160 +74,167 @@ export function PDV({ criar }) {
     }
   }
 
-  const cardStyle = { background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px' };
-  const chipBtn = (ativo) => ({
-    flex: '0 0 auto', border: '1px solid var(--border)', borderRadius: '11px', padding: '9px 15px',
-    fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap',
-    background: ativo ? 'var(--accent)' : 'var(--surface)',
-    color: ativo ? 'var(--onAccent)' : 'var(--muted)',
-    borderColor: ativo ? 'var(--accent)' : 'var(--border)',
-  });
+  const cartHasItems = cartItens.length > 0;
+  const chipBase = { border: '1px solid var(--border)', borderRadius: '11px', padding: '9px 15px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all .12s', whiteSpace: 'nowrap' };
+  const pagBase = { flex: 1, borderRadius: '10px', padding: '10px 4px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--border)', transition: 'all .12s' };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1.5fr) minmax(300px, 1fr)', gap: '18px', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 392px', gap: '22px', padding: '24px 28px', maxWidth: '1440px', margin: '0 auto', alignItems: 'start' }}>
       {/* ============ CATÁLOGO ============ */}
-      <div style={{ ...cardStyle, padding: '18px' }}>
-        <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '20px', color: 'var(--fg)', marginBottom: '12px' }}>
-          Nova venda
-        </div>
-
+      <section>
         {/* busca */}
-        <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <div style={{ position: 'relative', marginBottom: '14px' }}>
+          <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: '17px', pointerEvents: 'none' }}>⌕</span>
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar bebida…"
-            style={{ width: '100%', padding: '12px 40px 12px 14px', borderRadius: '11px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '14px' }}
+            placeholder="BUSCAR BEBIDA..."
+            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '13px', padding: '13px 44px', color: 'var(--fg)', fontSize: '14px', fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', outline: 'none' }}
           />
           {busca && (
-            <button onClick={() => setBusca('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '18px', fontWeight: 700 }}>×</button>
+            <button onClick={() => setBusca('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', width: '28px', height: '28px', borderRadius: '8px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: '15px', cursor: 'pointer', lineHeight: 1 }}>×</button>
           )}
         </div>
 
         {/* chips de categoria */}
-        <div className="sd-scroll" style={{ display: 'flex', gap: '7px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
-          {CATS.map((c) => (
-            <button key={c} onClick={() => { setCat(c); setBusca(''); }} style={chipBtn(cat === c && !busca)}>{c}</button>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
+          {CATS.map((c) => {
+            const ativo = cat === c && !busca;
+            return (
+              <button
+                key={c}
+                onClick={() => { setCat(c); setBusca(''); }}
+                style={{ ...chipBase, ...(ativo ? { background: 'var(--accent)', color: 'var(--onAccent)', borderColor: 'var(--accent)' } : { background: 'var(--surface)', color: 'var(--muted)' }) }}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
 
+        {!produtos.length && (
+          <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px', color: 'var(--fg)' }}>Nenhuma bebida encontrada</div>
+            <div style={{ fontSize: '13px', marginTop: '5px' }}>Tente outro termo de busca</div>
+          </div>
+        )}
+
         {/* grade de produtos */}
-        <div className="sd-scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))', gap: '10px', maxHeight: '52vh', overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(208px, 1fr))', gap: '16px' }}>
           {produtos.map((p) => (
             <button
               key={p.id}
               onClick={() => { setModal(p); setModalTam(0); setModalQty(1); }}
-              style={{ textAlign: 'left', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '7px' }}
+              style={{ textAlign: 'left', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '17px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer', color: 'inherit' }}
             >
-              {p.img ? (
-                <div style={{ height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img src={p.img} alt="" style={{ maxWidth: '100%', maxHeight: '64px', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ width: '12px', height: '12px', borderRadius: '50%', flex: 'none', marginTop: '3px', background: CAT_COR[p.cat] || 'var(--accent)' }} />
+                <span style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'right' }}>{volLabel(p)}</span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '16.5px', lineHeight: 1.22, letterSpacing: '.01em', textTransform: 'uppercase', minHeight: '60px' }}>{p.nome}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
+                  <span style={{ fontSize: '10.5px', color: 'var(--muted)', height: '13px' }}>{p.tamanhos && p.tamanhos.length > 1 ? 'a partir de' : ''}</span>
+                  <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '21px', letterSpacing: '-.02em' }}>{brl(precoMin(p))}</span>
                 </div>
-              ) : (
-                <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: CAT_COR[p.cat] || 'var(--accent)' }} />
-              )}
-              <div style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--fg)', lineHeight: 1.22 }}>{p.nome}</div>
-              <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>{volLabel(p)}</div>
-              <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '15px', color: CAT_COR[p.cat] || 'var(--accent)' }}>
-                {p.tamanhos && p.tamanhos.length > 1 && <span style={{ fontFamily: 'Hanken Grotesk', fontWeight: 600, fontSize: '10.5px', color: 'var(--muted)', display: 'block' }}>a partir de</span>}
-                {brl(precoMin(p))}
+                {p.img && (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minWidth: 0 }}>
+                    <img src={p.img} alt="" style={{ maxWidth: '100%', maxHeight: '58px', objectFit: 'contain', display: 'block' }} />
+                  </div>
+                )}
+                <span style={{ width: '34px', height: '34px', flex: 'none', borderRadius: '10px', background: 'var(--accent)', color: 'var(--onAccent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '23px', fontWeight: 700, lineHeight: 1 }}>+</span>
               </div>
             </button>
           ))}
-          {!produtos.length && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--muted)', fontSize: '13px', padding: '30px 0' }}>
-              Nenhuma bebida encontrada.
+        </div>
+      </section>
+
+      {/* ============ PEDIDO ATUAL (carrinho/checkout) ============ */}
+      <aside style={{ position: 'sticky', top: '90px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 112px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '17px' }}>Pedido atual</div>
+          <button onClick={() => { setCart({}); setCliente(''); setPagoNovo(false); }} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline', padding: '4px' }}>limpar</button>
+        </div>
+
+        <div style={{ padding: '14px 18px 0' }}>
+          <input
+            value={cliente}
+            onChange={(e) => setCliente(e.target.value)}
+            placeholder="Nome do cliente (opcional)"
+            style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '11px 12px', color: 'var(--fg)', fontSize: '13.5px', outline: 'none' }}
+          />
+        </div>
+
+        <div className="sd-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: '9px', minHeight: '120px' }}>
+          {!cartHasItems ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', textAlign: 'center', padding: '30px 10px', color: 'var(--muted)' }}>
+              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px', color: 'var(--fg)' }}>Carrinho vazio</div>
+              <div style={{ fontSize: '12.5px', maxWidth: '200px' }}>Toque nas bebidas ao lado para montar o pedido</div>
             </div>
+          ) : (
+            cartItens.map(([key, c]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '13.5px', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nome}</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--muted)' }}>{c.rotulo} · {brl(c.preco)}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '9px' }}>
+                  <button onClick={() => setCart((cc) => { const v = cc[key].qty - 1; const n = { ...cc }; if (v <= 0) delete n[key]; else n[key] = { ...cc[key], qty: v }; return n; })} style={{ width: '28px', height: '30px', background: 'none', border: 'none', color: 'var(--fg)', fontSize: '17px', cursor: 'pointer', lineHeight: 1 }}>–</button>
+                  <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 700, fontSize: '13.5px', fontFamily: "'Bricolage Grotesque',sans-serif" }}>{c.qty}</span>
+                  <button onClick={() => setCart((cc) => ({ ...cc, [key]: { ...cc[key], qty: cc[key].qty + 1 } }))} style={{ width: '28px', height: '30px', background: 'none', border: 'none', color: 'var(--fg)', fontSize: '17px', cursor: 'pointer', lineHeight: 1 }}>+</button>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
 
-      {/* ============ CARRINHO / CHECKOUT ============ */}
-      <div style={{ ...cardStyle, padding: '18px', position: 'sticky', top: '90px' }}>
-        <div style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '18px', color: 'var(--fg)', marginBottom: '12px' }}>
-          Comanda
-        </div>
-
-        {cartItens.length === 0 ? (
-          <div style={{ color: 'var(--muted)', fontSize: '13px', textAlign: 'center', padding: '24px 0' }}>
-            Toque numa bebida para adicionar.
+        <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '13px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '13px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Total</span>
+            <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em' }}>{brl(total)}</span>
           </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '12px' }}>
-              {cartItens.map(([key, c]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{c.rotulo} · {brl(c.preco)}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button onClick={() => setCart((cc) => { const v = cc[key].qty - 1; const n = { ...cc }; if (v <= 0) delete n[key]; else n[key] = { ...cc[key], qty: v }; return n; })} style={qtyBtn}>−</button>
-                    <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--fg)', minWidth: '18px', textAlign: 'center' }}>{c.qty}</span>
-                    <button onClick={() => setCart((cc) => ({ ...cc, [key]: { ...cc[key], qty: cc[key].qty + 1 } }))} style={qtyBtn}>+</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* cliente */}
-            <input
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              placeholder="Nome do cliente (opcional)"
-              style={{ width: '100%', padding: '11px 13px', borderRadius: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '13px', marginBottom: '10px' }}
-            />
-
-            {/* pagamento — pills segmentadas */}
-            <div style={{ display: 'flex', gap: '7px', marginBottom: '10px' }}>
-              {PAGS.map((p) => {
-                const sel = pagamento === p;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPagamento(p)}
-                    style={{
-                      flex: 1, borderRadius: '10px', padding: '10px 4px', fontSize: '12.5px', fontWeight: 600,
-                      border: '1px solid ' + (sel ? 'var(--fg)' : 'var(--border)'),
-                      background: sel ? 'var(--fg)' : 'var(--bg)',
-                      color: sel ? 'var(--bg)' : 'var(--muted)',
-                    }}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* pago no ato — pill */}
-            <button
-              onClick={() => setPagoNovo((v) => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%',
-                borderRadius: '10px', padding: '11px 13px', fontSize: '12.5px', fontWeight: 600, marginBottom: '12px',
-                border: '1px solid ' + (pagoNovo ? 'color-mix(in srgb,#7cc142 50%,transparent)' : 'var(--border)'),
-                background: pagoNovo ? 'color-mix(in srgb,#7cc142 15%,transparent)' : 'var(--bg)',
-                color: pagoNovo ? '#a7e76b' : 'var(--muted)',
-              }}
-            >
-              Pago no ato
-              <span style={{ fontWeight: 800 }}>{pagoNovo ? '✓ Sim' : 'Não'}</span>
-            </button>
-
-            <button
-              onClick={gerar}
-              disabled={gerando}
-              style={{
-                width: '100%', border: 'none', borderRadius: '12px', padding: '15px',
-                fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15.5px',
-                background: 'var(--accent)', color: 'var(--onAccent)',
-              }}
-            >
-              {gerando ? 'Gerando…' : `Gerar senha · ${brl(total)}`}
-            </button>
-          </>
-        )}
-      </div>
+          <div style={{ display: 'flex', gap: '7px' }}>
+            {PAGS.map((p) => {
+              const sel = pagamento === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPagamento(p)}
+                  style={{ ...pagBase, ...(sel ? { background: 'var(--fg)', color: 'var(--bg)', borderColor: 'var(--fg)' } : { background: 'var(--bg)', color: 'var(--muted)' }) }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            onClick={() => setPagoNovo((v) => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer',
+              borderRadius: '10px', padding: '10px 13px', fontSize: '12.5px', fontWeight: 600, transition: 'all .12s',
+              border: '1px solid ' + (pagoNovo ? 'color-mix(in srgb,#7cc142 50%,transparent)' : 'var(--border)'),
+              background: pagoNovo ? 'color-mix(in srgb,#7cc142 15%,transparent)' : 'var(--bg)',
+              color: pagoNovo ? '#a7e76b' : 'var(--muted)',
+            }}
+          >
+            <span>Pagamento já recebido</span>
+            <span style={{ fontWeight: 700 }}>{pagoNovo ? '✓ Sim' : 'Não'}</span>
+          </div>
+          <button
+            onClick={gerar}
+            disabled={!cartHasItems || gerando}
+            style={{
+              width: '100%', border: 'none', borderRadius: '12px', padding: '15px',
+              fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15.5px', transition: 'all .12s',
+              cursor: cartHasItems ? 'pointer' : 'not-allowed',
+              background: cartHasItems ? 'var(--accent)' : 'var(--surface2)',
+              color: cartHasItems ? 'var(--onAccent)' : 'var(--muted)',
+            }}
+          >
+            {gerando ? 'Gerando…' : cartHasItems ? `Gerar senha · ${brl(total)}` : 'Adicione itens'}
+          </button>
+        </div>
+      </aside>
 
       {/* ============ MODAL TAMANHO/QTD ============ */}
       {modal && (
@@ -313,10 +320,6 @@ export function PDV({ criar }) {
   );
 }
 
-const qtyBtn = {
-  width: '30px', height: '30px', borderRadius: '9px', border: '1px solid var(--border)',
-  background: 'var(--surface2)', color: 'var(--fg)', fontSize: '16px', fontWeight: 800,
-};
 const bigQtyBtn = {
   width: '42px', height: '42px', borderRadius: '12px', border: '1px solid var(--border)',
   background: 'var(--bg)', color: 'var(--fg)', fontSize: '20px', fontWeight: 800,
