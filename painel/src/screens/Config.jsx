@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 // Semana canônica — pares dia/curto compatíveis com o matching do app do
 // cliente (lib/schedule.js normaliza acento/caixa antes de comparar).
@@ -22,6 +23,7 @@ const SEMANA = [
  * do cliente exibe estes canais. Preencha com os dados públicos do bar.
  */
 export function Config({ ativo }) {
+  const { isMobile } = useViewport();
   const [form, setForm] = useState(null);     // {horarios, locais, telefone, whatsapp, version}
   const [dirty, setDirty] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -113,7 +115,7 @@ export function Config({ ativo }) {
   const nLocaisAtivos = form.locais.filter((l) => l.ativo).length;
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '880px', margin: '0 auto', position: 'relative' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: '980px', margin: '0 auto', position: 'relative' }}>
       <div style={{ marginBottom: '22px' }}>
         <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Ajustes</div>
         <div style={{ fontSize: '13.5px', color: 'var(--muted)', marginTop: '6px' }}>{nDiasAbertos} dias de atendimento · {nLocaisAtivos} locais ativos</div>
@@ -133,11 +135,11 @@ export function Config({ ativo }) {
         <div style={secDesc}>Defina os dias e horários em que o trailer atende.</div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {form.horarios.map((h, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid color-mix(in srgb,var(--border) 60%,transparent)' }}>
-              <span style={{ width: '130px', flex: 'none', fontWeight: 600, fontSize: '13.5px' }}>{h.dia}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '14px', padding: '11px 0', borderTop: '1px solid color-mix(in srgb,var(--border) 60%,transparent)', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <span style={{ width: isMobile ? '84px' : '130px', flex: 'none', fontWeight: 600, fontSize: '13.5px' }}>{h.dia}</span>
               <button onClick={() => setHorario(i, { aberto: !h.aberto })} style={pill(h.aberto)}>{h.aberto ? 'Aberto' : 'Fechado'}</button>
               {h.aberto && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginLeft: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginLeft: isMobile ? 0 : 'auto' }}>
                   <input type="time" value={h.abre} onChange={(e) => setHorario(i, { abre: e.target.value })} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '9px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
                   <span style={{ color: 'var(--muted)', fontSize: '13px' }}>até</span>
                   <input type="time" value={h.fecha} onChange={(e) => setHorario(i, { fecha: e.target.value })} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '9px', padding: '9px 11px', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 600, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
@@ -200,7 +202,7 @@ export function Config({ ativo }) {
       <div style={{ ...panel, marginBottom: dirty ? '80px' : '16px' }}>
         <div style={secTitulo}>Contato</div>
         <div style={secDesc}>Canais usados para contato e pedidos (aparecem na aba Contato do app do cliente).</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
           <CampoContato rotulo="Telefone para contato" icone="☎" corIcone="var(--muted)" valor={form.telefone || ''} onChange={(v) => mutar({ telefone: v })} placeholder="(31) 0000-0000" />
           <CampoContato rotulo="WhatsApp" icone="✆" corIcone="#25d366" borda="color-mix(in srgb,#25d366 32%,var(--border))" valor={form.whatsapp || ''} onChange={(v) => mutar({ whatsapp: v })} placeholder="(31) 90000-0000" />
           <CampoContato rotulo="E-mail" icone="✉" corIcone="var(--muted)" valor={form.email || ''} onChange={(v) => mutar({ email: v })} placeholder="contato@summerdrinks.com.br" />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Dispo } from './Dispo.jsx';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const TIPO_COR = { 'Aniversário': '#ff5da2', 'Casamento': '#f5a623', 'Corporativo': '#4aa8d8', 'Formatura': '#b07be0', 'Confraternização': '#7cc142', 'Festa Particular': '#3fcaa8', 'Outro': '#a99a83' };
@@ -38,6 +39,7 @@ const pill = (cor) => ({ fontSize: '10.5px', fontWeight: 700, padding: '4px 11px
  * do app recebe a notificação via outbox automaticamente.
  */
 export function Agenda({ agendas, transicionar, orcar, criar, dispoApi }) {
+  const { isMobile } = useViewport();
   const [filtro, setFiltro] = useState('todas');
   const [expandido, setExpandido] = useState(null);
   const [recusando, setRecusando] = useState(null);
@@ -86,7 +88,7 @@ export function Agenda({ agendas, transicionar, orcar, criar, dispoApi }) {
   };
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
       {/* cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div>

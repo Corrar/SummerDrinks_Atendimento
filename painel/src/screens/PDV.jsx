@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useCatalogo } from '../hooks/useCatalogo.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CATS = ['Todos', 'Especiais', 'Balada', 'Aperol', 'Campari', 'Batidinhas', 'Caipirinhas', 'Doses', 'Potes', 'Baldes'];
@@ -23,6 +24,7 @@ const precoMin = (p) => Math.min(...(p.tamanhos || [{ preco: 0 }]).map((t) => Nu
  */
 export function PDV({ criar }) {
   const { itens: catalogo } = useCatalogo();
+  const { isTablet, isMobile } = useViewport();
 
   const [cat, setCat] = useState('Todos');
   const [busca, setBusca] = useState('');
@@ -79,7 +81,7 @@ export function PDV({ criar }) {
   const pagBase = { flex: 1, borderRadius: '10px', padding: '10px 4px', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid var(--border)', transition: 'all .12s' };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 392px', gap: '22px', padding: '24px 28px', maxWidth: '1440px', margin: '0 auto', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(0,1fr) 392px', gap: isMobile ? '16px' : '22px', padding: isMobile ? '16px' : '24px 28px', alignItems: 'start' }}>
       {/* ============ CATÁLOGO ============ */}
       <section>
         {/* busca */}
@@ -150,7 +152,7 @@ export function PDV({ criar }) {
       </section>
 
       {/* ============ PEDIDO ATUAL (carrinho/checkout) ============ */}
-      <aside style={{ position: 'sticky', top: '90px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 112px)' }}>
+      <aside style={{ position: isTablet ? 'static' : 'sticky', top: '90px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: isTablet ? 'none' : 'calc(100vh - 112px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '17px' }}>Pedido atual</div>
           <button onClick={() => { setCart({}); setCliente(''); setPagoNovo(false); }} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '12.5px', cursor: 'pointer', textDecoration: 'underline', padding: '4px' }}>limpar</button>

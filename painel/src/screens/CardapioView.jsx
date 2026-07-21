@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { CLIENTE_URL, TENANT } from '../lib/config.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CATS = ['Especiais', 'Balada', 'Aperol', 'Campari', 'Batidinhas', 'Caipirinhas', 'Doses', 'Potes', 'Baldes'];
@@ -30,6 +31,7 @@ function destinoMenu(mesa) {
  * Editar. Dados vêm do catálogo real (mesma fonte do /menu público).
  */
 export function CardapioView({ itens }) {
+  const { isMobile } = useViewport();
   const [qrOpen, setQrOpen] = useState(false);
   const [mesa, setMesa] = useState(0); // 0 = sem mesa (cardápio geral)
   const [qrUrl, setQrUrl] = useState('');
@@ -51,9 +53,9 @@ export function CardapioView({ itens }) {
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'relative', zIndex: 1, padding: '28px', maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ position: 'relative', zIndex: 1, padding: isMobile ? '18px' : '28px', maxWidth: '1100px', margin: '0 auto' }}>
         {/* cabeçalho centralizado + botão de QR (canto) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', marginBottom: '30px' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: isMobile ? '14px' : 0, position: 'relative', marginBottom: '30px' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '12px', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.28em', fontWeight: 600 }}>Cardápio</div>
             <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '38px', letterSpacing: '-.02em', marginTop: '8px' }}>Summer Drinks</div>
@@ -61,7 +63,7 @@ export function CardapioView({ itens }) {
           <button
             onClick={() => setQrOpen(true)}
             title="QR do cardápio"
-            style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 16px', borderRadius: '12px', border: 'none', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 700, fontSize: '13px', fontFamily: "'Bricolage Grotesque',sans-serif", cursor: 'pointer' }}
+            style={{ ...(isMobile ? { position: 'static', transform: 'none' } : { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }), display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 16px', borderRadius: '12px', border: 'none', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 700, fontSize: '13px', fontFamily: "'Bricolage Grotesque',sans-serif", cursor: 'pointer' }}
             className="sd-qrbtn"
           >
             <QrGlyph /> QR do cardápio
@@ -72,8 +74,8 @@ export function CardapioView({ itens }) {
           <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>Cardápio vazio — cadastre bebidas na aba Editar.</div>
         )}
 
-        {/* menu em 2 colunas (magazine), como no protótipo */}
-        <div style={{ columns: 2, columnGap: '48px' }}>
+        {/* menu em 2 colunas (magazine), como no protótipo; 1 coluna no mobile */}
+        <div style={{ columns: isMobile ? 1 : 2, columnGap: '48px' }}>
           {grupos.map((g) => (
             <div key={g.cat} style={{ breakInside: 'avoid', marginBottom: '30px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '14px', paddingBottom: '9px', borderBottom: '2px solid var(--border)' }}>

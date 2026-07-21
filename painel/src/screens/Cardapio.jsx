@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CATS = ['Especiais', 'Balada', 'Aperol', 'Campari', 'Batidinhas', 'Caipirinhas', 'Doses', 'Potes', 'Baldes'];
@@ -20,6 +21,7 @@ const inpBase = {
  *  - O /menu público é cacheado 60s: mudanças demoram até 1 min pro cliente.
  */
 export function Cardapio({ itens, recarregar }) {
+  const { isMobile } = useViewport();
   const [abertos, setAbertos] = useState(() => new Set()); // categorias expandidas
   const [edits, setEdits] = useState({});                  // id → item editado (dirty)
   const [salvando, setSalvando] = useState(null);
@@ -114,7 +116,7 @@ export function Cardapio({ itens, recarregar }) {
   }
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1100px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: '1100px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '30px', letterSpacing: '-.02em', lineHeight: 1 }}>Editar cardápio</div>

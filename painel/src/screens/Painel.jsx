@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pad3 = (n) => String(n).padStart(3, '0');
@@ -25,6 +26,7 @@ const pagoTxt = (pago) => (pago ? '✓ Pago' : '○ A receber');
  * reordenar via PATCH). Entrega de comanda não paga passa por confirmação.
  */
 export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar }) {
+  const { isTablet, isMobile } = useViewport();
   const dragSenha = useRef(null);
   const [detalhe, setDetalhe] = useState(null);
   const [entregaConfirm, setEntregaConfirm] = useState(null);
@@ -79,7 +81,7 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
   };
 
   return (
-    <div style={{ padding: '28px', maxWidth: '1320px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '28px' }}>
       {/* cabeçalho: título + legenda + badge de chamada */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '22px', flexWrap: 'wrap' }}>
         <div>
@@ -109,8 +111,8 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
         </div>
       </div>
 
-      {/* colunas: em preparo / pronto */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignItems: 'start' }}>
+      {/* colunas: em preparo / pronto (empilham em telas estreitas) */}
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap: isMobile ? '14px' : '20px', alignItems: 'start' }}>
         {/* Em preparo */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', padding: '20px', minHeight: '340px' }}>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--accent)', marginBottom: '16px' }}>Em preparo</div>

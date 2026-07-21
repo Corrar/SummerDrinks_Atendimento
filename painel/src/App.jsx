@@ -4,7 +4,6 @@ import { Login } from './screens/Login.jsx';
 import { PDV } from './screens/PDV.jsx';
 import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
-import { Dispo } from './screens/Dispo.jsx';
 import { Cardapio } from './screens/Cardapio.jsx';
 import { CardapioView } from './screens/CardapioView.jsx';
 import { Config } from './screens/Config.jsx';
@@ -13,6 +12,7 @@ import { useOrders } from './hooks/useOrders.js';
 import { useAgendas } from './hooks/useAgendas.js';
 import { useDispo } from './hooks/useDispo.js';
 import { useCatalogo } from './hooks/useCatalogo.js';
+import { useViewport } from './hooks/useViewport.js';
 
 const NOME_TRAILER = 'Summer Drinks';
 
@@ -39,6 +39,7 @@ function Shell() {
   const { autenticado, logout, papel } = useAuth();
   const [aba, setAba] = useState('pdv');
   const [tema, setTema] = useState(() => localStorage.getItem('sdp_tema') || 'Noturno');
+  const { isMobile } = useViewport();
 
   // hooks só pollam quando autenticado (agendas também alimentam a ocupação da Dispo)
   const ordersApi = useOrders(autenticado);
@@ -79,8 +80,8 @@ function Shell() {
     <div className="sd-painel" data-tema={tema} style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--fg)' }}>
       <header
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
-          padding: '14px 24px', background: 'var(--headerbg)', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? '10px' : '16px', flexWrap: 'wrap',
+          padding: isMobile ? '10px 14px' : '14px 24px', background: 'var(--headerbg)', borderBottom: '1px solid var(--border)',
           position: 'sticky', top: 0, zIndex: 30,
         }}
       >
@@ -96,8 +97,9 @@ function Shell() {
           </div>
         </div>
 
-        {/* abas — dentro de um grupo com borda arredondada (protótipo) */}
-        <nav className="sd-scroll" style={{ display: 'flex', gap: '6px', background: 'var(--surface)', padding: '5px', borderRadius: '13px', border: '1px solid var(--border)', overflowX: 'auto' }}>
+        {/* abas — dentro de um grupo com borda arredondada (protótipo). No mobile
+            ocupam uma linha própria e rolam horizontalmente. */}
+        <nav className="sd-scroll" style={{ display: 'flex', gap: '6px', background: 'var(--surface)', padding: '5px', borderRadius: '13px', border: '1px solid var(--border)', overflowX: 'auto', maxWidth: '100%', ...(isMobile ? { order: 3, flex: '1 1 100%' } : {}) }}>
           {abas.map((a) => {
             const ativo = abaAtual === a.key;
             return (
@@ -117,16 +119,18 @@ function Shell() {
         </nav>
 
         {/* cluster direito: usuário, tema, sair, data, status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 'none' }}>
-          {/* chip de usuário (ícone à esquerda) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '6px 13px 6px 7px', borderRadius: '11px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '9px' : '14px', flex: 'none' }}>
+          {/* chip de usuário (ícone à esquerda; no mobile só o avatar) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', background: 'var(--surface)', border: '1px solid var(--border)', padding: isMobile ? '5px' : '6px 13px 6px 7px', borderRadius: '11px' }}>
             <span style={{ width: '28px', height: '28px', flex: 'none', borderRadius: '8px', background: 'var(--accent)', color: 'var(--onAccent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '13px' }}>
               {inicial}
             </span>
-            <div style={{ textAlign: 'left' }} className="sd-userchip">
-              <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{papelLabel}</div>
-              <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.09em', marginTop: '2px' }}>{papelLabel}</div>
-            </div>
+            {!isMobile && (
+              <div style={{ textAlign: 'left' }} className="sd-userchip">
+                <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{papelLabel}</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.09em', marginTop: '2px' }}>{papelLabel}</div>
+              </div>
+            )}
           </div>
 
           {/* tema */}
@@ -147,17 +151,21 @@ function Shell() {
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
           </button>
 
-          {/* data de hoje */}
-          <div style={{ textAlign: 'right' }} className="sd-hoje">
-            <div style={{ fontSize: '11.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Hoje</div>
-            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px' }}>{hoje}</div>
-          </div>
+          {/* data de hoje — oculta no mobile p/ economizar espaço */}
+          {!isMobile && (
+            <div style={{ textAlign: 'right' }} className="sd-hoje">
+              <div style={{ fontSize: '11.5px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Hoje</div>
+              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px' }}>{hoje}</div>
+            </div>
+          )}
 
-          {/* status aberto */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '9px 14px', borderRadius: '11px' }} className="sd-status">
-            <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'var(--accent2)', boxShadow: '0 0 8px var(--accent2)' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600 }}>Aberto</span>
-          </div>
+          {/* status aberto — oculto no mobile */}
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '9px 14px', borderRadius: '11px' }} className="sd-status">
+              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'var(--accent2)', boxShadow: '0 0 8px var(--accent2)' }} />
+              <span style={{ fontSize: '13px', fontWeight: 600 }}>Aberto</span>
+            </div>
+          )}
         </div>
       </header>
 

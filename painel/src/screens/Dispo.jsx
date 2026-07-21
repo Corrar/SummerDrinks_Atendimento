@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useViewport } from '../hooks/useViewport.js';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -26,6 +27,7 @@ function periodoDe(hora) {
  * merge da borda pública).
  */
 export function Dispo({ dispoApi, agendas }) {
+  const { isTablet } = useViewport();
   const { ano, mes, dias, carregando, navegar, salvar } = dispoApi;
   const [sel, setSel] = useState(null);        // iso selecionado
   const [salvando, setSalvando] = useState(false);
@@ -140,7 +142,7 @@ export function Dispo({ dispoApi, agendas }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.3fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(320px, 1.3fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
       {/* calendário */}
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>

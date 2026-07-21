@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const isoHoje = () => new Date().toISOString().slice(0, 10);
@@ -19,6 +20,7 @@ const PAG_COR = { Pix: '#7cc142', 'Cartão': '#4aa8d8', Dinheiro: '#f5a623' };
  * tabela de mais vendidos. Ligado ao /orders/relatorio real + /avaliacoes.
  */
 export function Relatorio({ ativo }) {
+  const { isTablet, isMobile } = useViewport();
   const [periodo, setPeriodo] = useState('7d');
   const [dados, setDados] = useState(null);
   const [aval, setAval] = useState(null);
@@ -74,7 +76,7 @@ export function Relatorio({ ativo }) {
   const maxQty = maisVendidos.length ? Math.max(...maisVendidos.map((m) => Number(m.qtd) || 0)) : 0;
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
       {/* cabeçalho + período */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div>
@@ -96,7 +98,7 @@ export function Relatorio({ ativo }) {
 
       {dados && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '18px', marginBottom: '18px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.5fr 1fr', gap: '18px', marginBottom: '18px', alignItems: 'start' }}>
             {/* HERO + KPIs */}
             <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '22px', border: '1px solid var(--border)', background: 'linear-gradient(120deg, color-mix(in srgb, var(--accent) 26%, var(--surface)) 0%, var(--surface) 58%)', padding: '26px 26px 22px' }}>
               <div style={{ fontSize: '11.5px', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.22em', fontWeight: 700 }}>Fechamento</div>
@@ -167,7 +169,7 @@ export function Relatorio({ ativo }) {
               <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px' }}>Receita de eventos</div>
               <span style={{ fontSize: '11.5px', color: 'var(--muted)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '999px', padding: '4px 12px', fontWeight: 600 }}>Contabilizada à parte do balcão</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
               <RecCard label="Eventos confirmados" valor={brl(dados.eventos?.receita)} sub={`${dados.eventos?.qtd || 0} eventos · receita garantida`} cor="#7cc142" borda="color-mix(in srgb,#7cc142 32%,var(--border))" />
               <RecCard label="A receber · balcão" valor={brl(dados.aReceber)} sub="comandas não pagas" cor="#4aa8d8" borda="color-mix(in srgb,#4aa8d8 28%,var(--border))" />
               <RecCard label="Total balcão + eventos" valor={brl((Number(dados.faturamento) || 0) + (Number(dados.eventos?.receita) || 0))} sub={`Balcão ${brl(dados.faturamento)} + eventos ${brl(dados.eventos?.receita)}`} />
@@ -183,7 +185,7 @@ export function Relatorio({ ativo }) {
             {maisVendidos.length === 0 ? (
               <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '10px 0' }}>Sem vendas no período.</div>
             ) : (
-              <>
+              <div className="sd-scroll" style={{ overflowX: 'auto' }}><div style={{ minWidth: isMobile ? '540px' : 'auto' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '24px 2fr 1fr 1.4fr 0.8fr', gap: '14px', alignItems: 'center', padding: '0 4px 12px', borderBottom: '1px solid var(--border)', fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                   <span>#</span><span>Bebida</span><span>Qtd</span><span>Participação</span><span style={{ textAlign: 'right' }}>Receita</span>
                 </div>
@@ -202,7 +204,7 @@ export function Relatorio({ ativo }) {
                     </div>
                   );
                 })}
-              </>
+              </div></div>
             )}
           </div>
 
