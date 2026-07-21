@@ -119,9 +119,31 @@ export function Dispo({ dispoApi, agendas }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.3fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
+    <div style={{ padding: '0 28px 28px', maxWidth: '1200px', margin: '0 auto' }}>
+     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', padding: '22px 24px' }}>
+      {/* cabeçalho da seção */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '18px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <div style={{ maxWidth: '520px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '9px', background: 'color-mix(in srgb,var(--accent) 16%,transparent)', color: 'var(--accent)', flex: 'none' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>
+            </span>
+            <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '19px', letterSpacing: '-.01em' }}>Disponibilidade no app do cliente</span>
+          </div>
+          <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '7px', lineHeight: 1.5 }}>
+            Controla o calendário que o cliente vê ao solicitar um evento. Toque num dia para liberar ou bloquear os horários de <strong style={{ color: 'var(--fg)', fontWeight: 600 }}>Tarde</strong>, <strong style={{ color: 'var(--fg)', fontWeight: 600 }}>Noite</strong> e <strong style={{ color: 'var(--fg)', fontWeight: 600 }}>Madrugada</strong>.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Legenda cor="#7cc142" texto="Livre" />
+          <Legenda cor="#f5a623" texto="Parcial" />
+          <Legenda cor="#e2615a" texto="Ocupado" />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.3fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
       {/* calendário */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <button onClick={() => navegar(-1)} style={navBtn}>‹</button>
           <span style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '18px', color: 'var(--fg)' }}>
@@ -137,16 +159,13 @@ export function Dispo({ dispoApi, agendas }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '5px' }}>{celulas}</div>
 
-        <div style={{ display: 'flex', gap: '14px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <Legenda cor="#7cc142" texto="Livre" />
-          <Legenda cor="#f5a623" texto="Parcial" />
-          <Legenda cor="#e2615a" texto="Ocupado" />
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
           <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Nº azul = eventos no dia · sem cor = não declarado (indisponível no app)</span>
         </div>
       </div>
 
       {/* editor do dia */}
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '18px' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
         {!sel ? (
           <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 10px', lineHeight: 1.6 }}>
             Selecione um dia no calendário para liberar ou fechar períodos.<br />
@@ -212,6 +231,8 @@ export function Dispo({ dispoApi, agendas }) {
           </>
         )}
       </div>
+      </div>
+     </div>
     </div>
   );
 }
