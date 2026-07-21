@@ -6,6 +6,7 @@ import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
 import { Dispo } from './screens/Dispo.jsx';
 import { Cardapio } from './screens/Cardapio.jsx';
+import { CardapioView } from './screens/CardapioView.jsx';
 import { Config } from './screens/Config.jsx';
 import { Relatorio } from './screens/Relatorio.jsx';
 import { useOrders } from './hooks/useOrders.js';
@@ -27,15 +28,16 @@ const ABAS = [
   { key: 'painel', rotulo: 'Painel' },
   { key: 'agenda', rotulo: 'Agenda' },
   { key: 'cardapio', rotulo: 'Cardápio' },
+  { key: 'editor', rotulo: 'Editar' },
   { key: 'relatorio', rotulo: 'Relatório' },
   { key: 'ajustes', rotulo: 'Ajustes' },
 ];
 
 // Telas permitidas por papel (espelha telasPermitidas do protótipo):
-// admin vê tudo; atendente/pdv/painel só operam o balcão.
+// admin vê tudo; atendente só opera o balcão e consulta o cardápio.
 function telasPermitidas(papel) {
   return papel === 'gestao'
-    ? ['pdv', 'painel', 'agenda', 'cardapio', 'relatorio', 'ajustes']
+    ? ['pdv', 'painel', 'agenda', 'cardapio', 'editor', 'relatorio', 'ajustes']
     : ['pdv', 'painel', 'cardapio'];
 }
 
@@ -48,7 +50,7 @@ function Shell() {
   const ordersApi = useOrders(autenticado);
   const agendasApi = useAgendas(autenticado && aba === 'agenda');
   const dispoApi = useDispo(autenticado && aba === 'agenda');
-  const catalogoApi = useCatalogo(autenticado && aba === 'cardapio');
+  const catalogoApi = useCatalogo(autenticado && (aba === 'cardapio' || aba === 'editor'));
 
   function toggleTema() {
     const t = tema === 'Claro' ? 'Noturno' : 'Claro';
@@ -187,7 +189,8 @@ function Shell() {
             <Dispo dispoApi={dispoApi} agendas={agendasApi.agendas} />
           </div>
         )}
-        {abaAtual === 'cardapio' && (
+        {abaAtual === 'cardapio' && <CardapioView itens={catalogoApi.itens} />}
+        {abaAtual === 'editor' && (
           <Cardapio itens={catalogoApi.itens} recarregar={catalogoApi.recarregar} />
         )}
         {abaAtual === 'ajustes' && <Config ativo={abaAtual === 'ajustes'} />}
