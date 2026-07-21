@@ -28,25 +28,37 @@ describe('máquina de estados — TRANSICOES', () => {
   })
 })
 
+const anunciou = () => q.mock.calls.some((c) => String(c[0]).includes('ultima_chamada'))
+
 describe('OrderService.marcarStatus — reabertura', () => {
-  it('reabre entregue → pronto SEM re-anunciar (sem UPDATE de chamada)', async () => {
-    q.mockResolvedValueOnce({ rows: [{ status: 'entregue' }], rowCount: 1 } as never) // SELECT ... FOR UPDATE
-     .mockResolvedValueOnce(linha('pronto') as never)                                  // UPDATE pedido RETURNING
+  it('reabre entregue → pronto de senha JÁ chamada: NÃO re-anuncia', async () => {
+    q.mockResolvedValueOnce({ rows: [{ status: 'entregue' }], rowCount: 1 } as never) // SELECT status FOR UPDATE
+     .mockResolvedValueOnce(linha('pronto') as never)                                  // UPDATE pedido
+     .mockResolvedValueOnce({ rows: [{ '?column?': 1 }], rowCount: 1 } as never)        // SELECT membership: já está no chamada_hist
     const p = await OrderService.marcarStatus(TENANT, 7, 'pronto')
     expect(p.status).toBe('pronto')
-    // Exatamente 2 queries: SELECT + UPDATE. A 3ª (registrar chamada) NÃO ocorre.
-    expect(q).toHaveBeenCalledTimes(2)
-    expect(q.mock.calls.some((c) => String(c[0]).includes('painel_estado'))).toBe(false)
+    expect(anunciou()).toBe(false) // nenhum UPDATE de ultima_chamada
   })
 
-  it('preparo → pronto (via normal) ANUNCIA no painel (UPDATE de chamada)', async () => {
+  it('reabre entregue → pronto de senha NUNCA chamada (preparo→entregue direto): ANUNCIA pela 1ª vez', async () => {
+    q.mockResolvedValueOnce({ rows: [{ status: 'entregue' }], rowCount: 1 } as never) // SELECT status
+     .mockResolvedValueOnce(linha('pronto') as never)                                  // UPDATE pedido
+     .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)                         // SELECT membership: ausente
+     .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)                         // UPDATE painel_estado (chamada)
+    const p = await OrderService.marcarStatus(TENANT, 7, 'pronto')
+    expect(p.status).toBe('pronto')
+    expect(anunciou()).toBe(true)
+  })
+
+  it('preparo → pronto (via normal) ANUNCIA no painel (sem checar histórico)', async () => {
     q.mockResolvedValueOnce({ rows: [{ status: 'preparo' }], rowCount: 1 } as never) // SELECT
      .mockResolvedValueOnce(linha('pronto') as never)                                // UPDATE pedido
      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)                       // UPDATE painel_estado (chamada)
     const p = await OrderService.marcarStatus(TENANT, 7, 'pronto')
     expect(p.status).toBe('pronto')
-    expect(q).toHaveBeenCalledTimes(3)
-    expect(q.mock.calls.some((c) => String(c[0]).includes('painel_estado'))).toBe(true)
+    expect(anunciou()).toBe(true)
+    // via normal não faz a checagem de membership (chamada_hist @>)
+    expect(q.mock.calls.some((c) => String(c[0]).includes('chamada_hist @>'))).toBe(false)
   })
 
   it('entregue → preparo continua proibido (TransicaoInvalida)', async () => {

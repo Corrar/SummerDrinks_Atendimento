@@ -115,11 +115,21 @@ export const OrderService = {
          RETURNING senha, hora, pagamento, status, cliente, pago, items`,
         [tenantId, dia, senha, novo],
       )
-      // Anuncia no painel só quando a senha fica pronta pela via normal. Reabertura
-      // (entregue → pronto) é correção: não re-chama o número (já foi chamado antes).
-      if (novo === 'pronto' && atual.status !== 'entregue') {
-        await this._registrarChamada(tx, tenantId, dia, senha)
+      // Anuncia no painel quando a senha fica pronta. Na REABERTURA (entregue →
+      // pronto) só re-anuncia se a senha NUNCA foi chamada — cobre o pedido que foi
+      // para 'entregue' direto de 'preparo' (nunca passou por 'pronto'): reabrir
+      // precisa chamar o número pela 1ª vez. Se já está no histórico de chamadas,
+      // reabrir é só correção e não re-chama.
+      let anunciar = novo === 'pronto'
+      if (anunciar && atual.status === 'entregue') {
+        const jaChamada = await tx.query(
+          `SELECT 1 FROM painel_estado
+             WHERE tenant_id = $1 AND dia = $2 AND chamada_hist @> to_jsonb($3::int)`,
+          [tenantId, dia, senha],
+        )
+        anunciar = (jaChamada.rowCount ?? 0) === 0
       }
+      if (anunciar) await this._registrarChamada(tx, tenantId, dia, senha)
       return toPedido(upd.rows[0]!)
     })
   },

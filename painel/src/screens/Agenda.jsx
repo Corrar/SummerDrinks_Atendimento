@@ -240,7 +240,8 @@ function NovaAgendaModal({ onClose, criar }) {
     if (!f.nome.trim() || f.telefone.replace(/\D/g, '').length < 8) { setErro('Preencha nome e um telefone válido.'); return; }
     setSalvando(true); setErro('');
     try {
-      await criar({ nome: f.nome.trim(), telefone: f.telefone.trim(), email: f.email.trim(), tipo: f.tipo, data: f.data, slot: f.slot, pessoas: Number(f.pessoas) || 0, local: f.local.trim(), obs: f.obs.trim() });
+      // pessoas precisa ser inteiro (schema z.coerce.number().int()); telefone ≤ 20.
+      await criar({ nome: f.nome.trim(), telefone: f.telefone.trim().slice(0, 20), email: f.email.trim(), tipo: f.tipo, data: f.data, slot: f.slot, pessoas: Math.max(0, Math.floor(Number(f.pessoas) || 0)), local: f.local.trim(), obs: f.obs.trim() });
       onClose();
     } catch (e) {
       setErro(e?.message || 'Não foi possível criar a agenda.');
@@ -252,12 +253,12 @@ function NovaAgendaModal({ onClose, criar }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '13px' }}>
         <div><label style={modalRotulo}>Cliente</label><input value={f.nome} onChange={(e) => set({ nome: e.target.value })} placeholder="Nome do cliente" style={modalInp} autoFocus /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div><label style={modalRotulo}>Telefone</label><input value={f.telefone} onChange={(e) => set({ telefone: e.target.value })} placeholder="(81) 90000-0000" style={modalInp} /></div>
+          <div><label style={modalRotulo}>Telefone</label><input value={f.telefone} onChange={(e) => set({ telefone: e.target.value })} maxLength={20} placeholder="(81) 90000-0000" style={modalInp} /></div>
           <div><label style={modalRotulo}>E-mail (opcional)</label><input value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="cliente@email.com" style={modalInp} /></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div><label style={modalRotulo}>Tipo</label><select value={f.tipo} onChange={(e) => set({ tipo: e.target.value })} style={{ ...modalInp, cursor: 'pointer' }}>{TIPOS.map((t) => <option key={t}>{t}</option>)}</select></div>
-          <div><label style={modalRotulo}>Convidados</label><input type="number" min="0" value={f.pessoas} onChange={(e) => set({ pessoas: e.target.value })} placeholder="0" style={modalInp} /></div>
+          <div><label style={modalRotulo}>Convidados</label><input type="number" min="0" step="1" value={f.pessoas} onChange={(e) => set({ pessoas: e.target.value })} placeholder="0" style={modalInp} /></div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div><label style={modalRotulo}>Data</label><input type="date" min={hojeIso} value={f.data} onChange={(e) => set({ data: e.target.value })} style={modalInp} /></div>
