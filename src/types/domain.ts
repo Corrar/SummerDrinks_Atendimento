@@ -94,11 +94,13 @@ export interface PainelEstado {
   version: number
 }
 
-// Transições de status válidas (nunca retroceder de 'entregue').
+// Transições de status válidas. 'entregue' → 'pronto' é a REABERTURA de comanda
+// (correção quando a entrega foi marcada por engano; devolve à fila de prontas).
+// É o único retrocesso a partir de 'entregue' — não se volta para 'preparo'.
 export const TRANSICOES: Readonly<Record<StatusPedido, readonly StatusPedido[]>> = {
   preparo: ['pronto', 'entregue'],
   pronto: ['entregue', 'preparo'],
-  entregue: [],
+  entregue: ['pronto'],
 }
 
 // ---------- erros de domínio tipados ----------

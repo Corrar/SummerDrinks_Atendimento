@@ -177,7 +177,7 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {atendidas.map((o) => (
-              <div key={o.senha} style={{ display: 'grid', gridTemplateColumns: '52px 1fr auto auto', gap: '14px', alignItems: 'center', padding: '11px 4px', borderBottom: '1px solid color-mix(in srgb,var(--border) 55%,transparent)' }}>
+              <div key={o.senha} style={{ display: 'grid', gridTemplateColumns: '52px 1fr auto auto auto', gap: '14px', alignItems: 'center', padding: '11px 4px', borderBottom: '1px solid color-mix(in srgb,var(--border) 55%,transparent)' }}>
                 <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '18px', color: 'var(--muted)' }}>{pad3(o.senha)}</span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '13px', color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{descDe(o)}</div>
@@ -185,6 +185,7 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
                 </div>
                 <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '14px', whiteSpace: 'nowrap' }}>{brl(totalDe(o))}</span>
                 <span onClick={() => togglePago(o.senha)} style={pagoPill(o.pago)}>{pagoTxt(o.pago)}</span>
+                <span onClick={() => { Promise.resolve(marcar(o.senha, 'pronto')).catch(() => {}); }} title="Reabrir comanda (voltar para prontas)" style={{ cursor: 'pointer', fontSize: '13px', color: 'var(--muted)', padding: '4px 9px', borderRadius: '8px', border: '1px solid var(--border)' }}>↩</span>
               </div>
             ))}
           </div>

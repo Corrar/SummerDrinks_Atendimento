@@ -115,7 +115,11 @@ export const OrderService = {
          RETURNING senha, hora, pagamento, status, cliente, pago, items`,
         [tenantId, dia, senha, novo],
       )
-      if (novo === 'pronto') await this._registrarChamada(tx, tenantId, dia, senha)
+      // Anuncia no painel só quando a senha fica pronta pela via normal. Reabertura
+      // (entregue → pronto) é correção: não re-chama o número (já foi chamado antes).
+      if (novo === 'pronto' && atual.status !== 'entregue') {
+        await this._registrarChamada(tx, tenantId, dia, senha)
+      }
       return toPedido(upd.rows[0]!)
     })
   },
