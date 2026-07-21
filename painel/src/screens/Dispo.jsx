@@ -63,23 +63,40 @@ export function Dispo({ dispoApi, agendas }) {
     }
   }
 
-  function corDoDia(iso) {
+  // Status do dia descontando ocupação por evento aceito (espelha o merge da borda).
+  function statusDoDia(iso) {
     const d = dias[iso];
     if (!d) return null; // não declarado
-    const livres = [d.tarde, d.noite, d.madrugada].filter(Boolean).length;
-    if (livres === 0) return '#e23b3b';
-    if (livres === 3) return 'var(--accent2)';
-    return 'var(--accent)';
+    const bk = ocupacao[iso] || {};
+    const livres = ['tarde', 'noite', 'madrugada'].filter((k) => d[k] && !bk[k]).length;
+    if (livres === 0) return { cor: '#e2615a', key: 'ocupado' };
+    if (livres === 3) return { cor: '#7cc142', key: 'livre' };
+    return { cor: '#f5a623', key: 'parcial' };
   }
+
+  const nEventos = useMemo(() => {
+    const m = {};
+    for (const a of agendas) m[a.data] = (m[a.data] || 0) + 1;
+    return m;
+  }, [agendas]);
 
   const celulas = [];
   for (let i = 0; i < primeiraCasa; i++) celulas.push(<span key={'x' + i} />);
   for (let d = 1; d <= diasNoMes; d++) {
     const iso = isoOf(ano, mes, d);
     const passado = Date.UTC(ano, mes, d) < hojeUtc;
-    const cor = corDoDia(iso);
-    const ocupado = ocupacao[iso];
+    const st = statusDoDia(iso);
     const selecionado = sel === iso;
+    const nEv = nEventos[iso] || 0;
+    // Tinge a célula por status (livre/parcial/ocupado), como no protótipo.
+    let bg = passado ? 'transparent' : 'var(--surface2)';
+    let borda = selecionado ? 'var(--accent)' : 'var(--border)';
+    if (!passado && st) {
+      bg = selecionado ? `color-mix(in srgb, ${st.cor} 26%, transparent)` : `color-mix(in srgb, ${st.cor} 14%, transparent)`;
+      if (!selecionado) borda = `color-mix(in srgb, ${st.cor} 40%, transparent)`;
+    } else if (!passado && selecionado) {
+      bg = 'color-mix(in srgb, var(--accent) 18%, transparent)';
+    }
     celulas.push(
       <button
         key={d}
@@ -87,10 +104,7 @@ export function Dispo({ dispoApi, agendas }) {
         disabled={passado}
         style={{
           aspectRatio: '1/1', borderRadius: '12px', position: 'relative',
-          border: `1px solid ${selecionado ? 'var(--accent)' : 'var(--border)'}`,
-          background: selecionado
-            ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
-            : passado ? 'transparent' : 'var(--surface2)',
+          border: `1px solid ${borda}`, background: bg,
           color: passado ? 'color-mix(in srgb, var(--fg) 25%, transparent)' : 'var(--fg)',
           fontWeight: 800, fontSize: '14px', fontFamily: 'Hanken Grotesk',
           cursor: passado ? 'default' : 'pointer',
@@ -98,10 +112,8 @@ export function Dispo({ dispoApi, agendas }) {
         }}
       >
         <span>{d}</span>
-        <span style={{ display: 'flex', gap: '3px' }}>
-          {cor && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: cor }} />}
-          {ocupado && <span title="Há evento aceito" style={{ width: '6px', height: '6px', borderRadius: '50%', border: '1.5px solid #4aa8d8', boxSizing: 'border-box' }} />}
-        </span>
+        {st && !passado && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: st.cor }} />}
+        {nEv > 0 && <span style={{ position: 'absolute', top: '4px', right: '5px', fontSize: '9px', fontWeight: 800, color: '#4aa8d8' }}>{nEv}</span>}
       </button>,
     );
   }
@@ -126,11 +138,10 @@ export function Dispo({ dispoApi, agendas }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '5px' }}>{celulas}</div>
 
         <div style={{ display: 'flex', gap: '14px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <Legenda cor="var(--accent2)" texto="Todos os períodos livres" />
-          <Legenda cor="var(--accent)" texto="Parcial" />
-          <Legenda cor="#e23b3b" texto="Fechado" />
-          <Legenda cor="transparent" borda="#4aa8d8" texto="Evento aceito no dia" />
-          <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Sem bolinha = não declarado (indisponível no app)</span>
+          <Legenda cor="#7cc142" texto="Livre" />
+          <Legenda cor="#f5a623" texto="Parcial" />
+          <Legenda cor="#e2615a" texto="Ocupado" />
+          <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Nº azul = eventos no dia · sem cor = não declarado (indisponível no app)</span>
         </div>
       </div>
 
