@@ -16,8 +16,12 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (usuario, senha) => {
     setCarregando(true);
     setErro(null);
+    const inicio = Date.now();
     try {
       const s = await api.login(usuario, senha);
+      // Garante um tempo mínimo da tela "Entrando…" (efeito), mesmo com login rápido.
+      const restante = 850 - (Date.now() - inicio);
+      if (restante > 0) await new Promise((r) => setTimeout(r, restante));
       setSessao(s);
       return true;
     } catch (e) {

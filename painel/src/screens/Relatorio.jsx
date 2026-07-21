@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useViewport } from '../hooks/useViewport.js';
+import { Skel } from '../components/Skeleton.jsx';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const isoHoje = () => new Date().toISOString().slice(0, 10);
@@ -93,6 +94,31 @@ export function Relatorio({ ativo }) {
       {erro && (
         <div style={{ ...panel, borderColor: '#e23b3b', fontSize: '13px', fontWeight: 700, marginBottom: '18px' }}>
           {erro.codigo === 'PERIODO_INVALIDO' ? 'Período inválido.' : (erro.message || 'Falha ao carregar o relatório.')}
+        </div>
+      )}
+
+      {!dados && !erro && (
+        <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.5fr 1fr', gap: '18px', alignItems: 'start' }}>
+          <div style={{ borderRadius: '22px', border: '1px solid var(--border)', padding: '26px' }}>
+            <Skel w="120px" h={13} style={{ marginBottom: '12px' }} />
+            <Skel w="240px" h={38} style={{ marginBottom: '22px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '14px', padding: '14px' }}>
+                  <Skel w="70%" h={11} style={{ marginBottom: '9px' }} />
+                  <Skel w="90%" h={22} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {[0, 1].map((i) => (
+              <div key={i} style={panel}>
+                <Skel w="150px" h={15} style={{ marginBottom: '14px' }} />
+                <Skel w="100%" h={92} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

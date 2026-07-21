@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useViewport } from '../hooks/useViewport.js';
+import { SkelSenhaTile } from '../components/Skeleton.jsx';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pad3 = (n) => String(n).padStart(3, '0');
@@ -25,8 +26,9 @@ const pagoTxt = (pago) => (pago ? '✓ Pago' : '○ A receber');
  * filtros e total a receber. Ligado ao backend (marcar / togglePago / entregar /
  * reordenar via PATCH). Entrega de comanda não paga passa por confirmação.
  */
-export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar }) {
+export function Painel({ orders, painel, carregando, reordenar, marcar, togglePago, entregar }) {
   const { isTablet, isMobile } = useViewport();
+  const primeiraCarga = carregando && orders.length === 0;
   const dragSenha = useRef(null);
   const [detalhe, setDetalhe] = useState(null);
   const [entregaConfirm, setEntregaConfirm] = useState(null);
@@ -116,8 +118,9 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
         {/* Em preparo */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', padding: '20px', minHeight: '340px' }}>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--accent)', marginBottom: '16px' }}>Em preparo</div>
-          {emPreparo.length === 0 && <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '13.5px' }}>Nenhum pedido em preparo</div>}
+          {!primeiraCarga && emPreparo.length === 0 && <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '13.5px' }}>Nenhum pedido em preparo</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+            {primeiraCarga && Array.from({ length: 2 }).map((_, i) => <SkelSenhaTile key={`sk${i}`} />)}
             {emPreparo.map((o) => (
               <div
                 key={o.senha} draggable
@@ -138,8 +141,9 @@ export function Painel({ orders, painel, reordenar, marcar, togglePago, entregar
         {/* Pronto */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--accent2)', borderRadius: '18px', padding: '20px', minHeight: '340px' }}>
           <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '15px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--accent2)', marginBottom: '16px' }}>Pronto — pode retirar</div>
-          {prontos.length === 0 && <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '13.5px' }}>Nenhuma senha pronta</div>}
+          {!primeiraCarga && prontos.length === 0 && <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)', fontSize: '13.5px' }}>Nenhuma senha pronta</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+            {primeiraCarga && Array.from({ length: 1 }).map((_, i) => <SkelSenhaTile key={`skp${i}`} />)}
             {prontos.map((o) => (
               <div
                 key={o.senha} draggable

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useViewport } from '../hooks/useViewport.js';
+import { Skel } from '../components/Skeleton.jsx';
 
 // Semana canônica — pares dia/curto compatíveis com o matching do app do
 // cliente (lib/schedule.js normaliza acento/caixa antes de comparar).
@@ -37,7 +38,19 @@ export function Config({ ativo }) {
   }, [ativo]);
 
   if (!form) {
-    return <div style={{ color: 'var(--muted)', fontSize: '14px', textAlign: 'center', padding: '40px 0' }}>Carregando…</div>;
+    return (
+      <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: '980px', margin: '0 auto' }}>
+        <Skel w="200px" h={30} style={{ marginBottom: '8px' }} />
+        <Skel w="320px" h={14} style={{ marginBottom: '22px' }} />
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '18px', padding: '20px 22px', marginBottom: '16px' }}>
+            <Skel w="180px" h={16} style={{ marginBottom: '16px' }} />
+            <Skel w="100%" h={42} style={{ marginBottom: '11px' }} />
+            <Skel w="100%" h={42} />
+          </div>
+        ))}
+      </div>
+    );
   }
 
   function mutar(patch) {

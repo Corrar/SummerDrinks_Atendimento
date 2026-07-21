@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
-import { Login } from './screens/Login.jsx';
+import { Login, Entrando } from './screens/Login.jsx';
 import { PDV } from './screens/PDV.jsx';
 import { Painel } from './screens/Painel.jsx';
 import { Agenda } from './screens/Agenda.jsx';
@@ -37,7 +37,7 @@ function telasPermitidas(papel) {
 }
 
 function Shell() {
-  const { autenticado, logout, papel } = useAuth();
+  const { autenticado, logout, papel, carregando } = useAuth();
   const [aba, setAba] = useState('pdv');
   const [tema, setTema] = useState(() => localStorage.getItem('sdp_tema') || 'Noturno');
   const { isMobile } = useViewport();
@@ -58,7 +58,7 @@ function Shell() {
   if (!autenticado) {
     return (
       <div className="sd-painel" data-tema={tema}>
-        <Login />
+        {carregando ? <Entrando /> : <Login />}
       </div>
     );
   }
@@ -198,6 +198,7 @@ function Shell() {
           <Painel
             orders={ordersApi.orders}
             painel={ordersApi.painel}
+            carregando={ordersApi.carregando}
             reordenar={ordersApi.reordenar}
             marcar={ordersApi.marcar}
             togglePago={ordersApi.togglePago}

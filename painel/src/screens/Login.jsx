@@ -4,6 +4,33 @@ import { useAuth } from '../auth/AuthContext.jsx';
 const NOME_TRAILER = 'Summer Drinks';
 const LARANJA = '#d88a10';
 
+// Formas decorativas de fundo (compartilhadas entre Login e Entrando).
+function Blobs() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 854 472" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <path fill="rgba(255,255,255,.05)" d="M854 -40 L854 512 L760 512 C 690 512, 660 460, 685 400 C 705 352, 700 320, 665 285 C 620 240, 615 170, 665 115 C 700 76, 705 30, 685 -40 Z" />
+      <path fill="rgba(255,255,255,.05)" d="M0 472 L0 175 C 55 155, 95 180, 110 230 C 122 272, 158 290, 205 282 C 268 272, 310 305, 305 360 C 300 415, 255 445, 195 440 C 150 436, 120 452, 105 472 Z" />
+    </svg>
+  );
+}
+
+/**
+ * Tela "Entrando…" — mostrada logo após clicar em Entrar, enquanto a sessão é
+ * criada. Mesmo fundo laranja do login, com spinner e o nome do trailer.
+ */
+export function Entrando() {
+  return (
+    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}>
+      <Blobs />
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px', textAlign: 'center', animation: 'sdFade .3s ease' }}>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', border: '4px solid rgba(255,255,255,.3)', borderTopColor: '#fff', animation: 'sd-spin .8s linear infinite' }} />
+        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '24px', letterSpacing: '-.01em', color: '#fff' }}>{NOME_TRAILER}</div>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,.85)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Entrando…</div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Login do operador — igual ao protótipo: fundo laranja da marca com formas
  * decorativas, ícone da taça, campos claros com placeholder espaçado e botão
@@ -38,10 +65,7 @@ export function Login() {
       style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: LARANJA, overflow: 'hidden' }}
     >
       {/* formas decorativas de fundo */}
-      <svg aria-hidden="true" viewBox="0 0 854 472" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-        <path fill="rgba(255,255,255,.05)" d="M854 -40 L854 512 L760 512 C 690 512, 660 460, 685 400 C 705 352, 700 320, 665 285 C 620 240, 615 170, 665 115 C 700 76, 705 30, 685 -40 Z" />
-        <path fill="rgba(255,255,255,.05)" d="M0 472 L0 175 C 55 155, 95 180, 110 230 C 122 272, 158 290, 205 282 C 268 272, 310 305, 305 360 C 300 415, 255 445, 195 440 C 150 436, 120 452, 105 472 Z" />
-      </svg>
+      <Blobs />
 
       <form
         onSubmit={submit}

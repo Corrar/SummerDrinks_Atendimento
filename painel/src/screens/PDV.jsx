@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useCatalogo } from '../hooks/useCatalogo.js';
 import { useViewport } from '../hooks/useViewport.js';
+import { SkelDrinkCard } from '../components/Skeleton.jsx';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CATS = ['Todos', 'Especiais', 'Balada', 'Aperol', 'Campari', 'Batidinhas', 'Caipirinhas', 'Doses', 'Potes', 'Baldes'];
@@ -23,8 +24,9 @@ const precoMin = (p) => Math.min(...(p.tamanhos || [{ preco: 0 }]).map((t) => Nu
  * SEMPRE do servidor (POST /orders). A fila de preparo/prontas vive no Painel.
  */
 export function PDV({ criar }) {
-  const { itens: catalogo } = useCatalogo();
+  const { itens: catalogo, carregando: catLoading } = useCatalogo();
   const { isTablet, isMobile } = useViewport();
+  const carregandoCatalogo = catLoading && catalogo.length === 0;
 
   const [cat, setCat] = useState('Todos');
   const [busca, setBusca] = useState('');
@@ -114,7 +116,7 @@ export function PDV({ criar }) {
           })}
         </div>
 
-        {!produtos.length && (
+        {!carregandoCatalogo && !produtos.length && (
           <div style={{ padding: '50px 10px', textAlign: 'center', color: 'var(--muted)' }}>
             <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '16px', color: 'var(--fg)' }}>Nenhuma bebida encontrada</div>
             <div style={{ fontSize: '13px', marginTop: '5px' }}>Tente outro termo de busca</div>
@@ -123,6 +125,7 @@ export function PDV({ criar }) {
 
         {/* grade de produtos (cards um pouco maiores; borda destaca no hover) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '18px' }}>
+          {carregandoCatalogo && Array.from({ length: 8 }).map((_, i) => <SkelDrinkCard key={`sk${i}`} />)}
           {produtos.map((p) => (
             <button
               key={p.id}
