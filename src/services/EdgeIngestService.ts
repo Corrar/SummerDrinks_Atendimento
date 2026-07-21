@@ -64,11 +64,24 @@ export const EdgeIngestService = {
     })
 
     const catalogoIds = [...new Set(refs.map((r) => r.catalogoId))]
-    const r = await pool.query<LinhaCatalogo>(
-      `SELECT id, nome, tamanhos, dobravel, preco_dobra FROM catalogo_item
-        WHERE tenant_id = $1 AND id = ANY($2::text[])`,
-      [tenantId, catalogoIds],
-    )
+    // Resiliente à migration 011 não rodada (código sobe automático, schema à mão):
+    // se as colunas de dobra não existem (42703), reprecifica sem dobra em vez de 500.
+    let r: { rows: LinhaCatalogo[] }
+    try {
+      r = await pool.query<LinhaCatalogo>(
+        `SELECT id, nome, tamanhos, dobravel, preco_dobra FROM catalogo_item
+          WHERE tenant_id = $1 AND id = ANY($2::text[])`,
+        [tenantId, catalogoIds],
+      )
+    } catch (e) {
+      if ((e as { code?: string })?.code !== '42703') throw e
+      const legado = await pool.query<Omit<LinhaCatalogo, 'dobravel' | 'preco_dobra'>>(
+        `SELECT id, nome, tamanhos FROM catalogo_item
+          WHERE tenant_id = $1 AND id = ANY($2::text[])`,
+        [tenantId, catalogoIds],
+      )
+      r = { rows: legado.rows.map((x) => ({ ...x, dobravel: false, preco_dobra: 0 })) }
+    }
     const mapa = new Map<string, LinhaCatalogo>(r.rows.map((x) => [x.id, x]))
 
     const itens: ItemPedido[] = []

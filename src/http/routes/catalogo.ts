@@ -67,16 +67,29 @@ type ItemInput = z.infer<typeof itemSchema>
 // Colunas retornadas ao painel (shape interno do catálogo). `preco_dobra` é
 // aliasado p/ camelCase (o painel lê/envia `precoDobra`).
 const COLS = 'id, cat, nome, descricao, tamanhos, img, ordem, dobravel, preco_dobra AS "precoDobra"'
+// COLS sem as colunas de dobra — fallback quando a migration 011 ainda não rodou.
+const COLS_LEGADO = 'id, cat, nome, descricao, tamanhos, img, ordem'
 
 // GET /catalogo — lista os itens do tenant autenticado.
 catalogoRouter.get(
   '/catalogo',
   exigirPapel('gestao'),
   asy(async (req, res) => {
-    const r = await pool.query(
-      `SELECT ${COLS} FROM catalogo_item WHERE tenant_id = $1 ORDER BY ordem, nome`,
-      [req.auth!.tenant],
-    )
+    // Resiliente à migration 011 não rodada: cai no shape legado (sem dobra).
+    let r: { rows: Record<string, unknown>[] }
+    try {
+      r = await pool.query<Record<string, unknown>>(
+        `SELECT ${COLS} FROM catalogo_item WHERE tenant_id = $1 ORDER BY ordem, nome`,
+        [req.auth!.tenant],
+      )
+    } catch (e) {
+      if ((e as { code?: string })?.code !== '42703') throw e
+      const legado = await pool.query<Record<string, unknown>>(
+        `SELECT ${COLS_LEGADO} FROM catalogo_item WHERE tenant_id = $1 ORDER BY ordem, nome`,
+        [req.auth!.tenant],
+      )
+      r = { rows: legado.rows.map((x) => ({ ...x, dobravel: false, precoDobra: 0 })) }
+    }
     res.json(r.rows)
   }),
 )

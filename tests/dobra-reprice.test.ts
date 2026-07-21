@@ -53,4 +53,19 @@ describe('EdgeIngestService._reprecificar — dobrada', () => {
     expect(itens[0].nome).toBe('Caipirinha · Copão')
     expect(itens[0].preco).toBe(20)
   })
+
+  it('migration 011 ainda não rodada (42703) → reprecifica sem dobra em vez de 500', async () => {
+    // 1ª query (com colunas de dobra) falha com undefined_column; a 2ª (legada) vence.
+    const err = Object.assign(new Error('column "dobravel" does not exist'), { code: '42703' })
+    vi.mocked(pool.query)
+      .mockRejectedValueOnce(err as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'cp1', nome: 'Caipirinha', tamanhos: [{ rotulo: 'Copão', preco: 20 }] }] } as never)
+    const { itens, total } = await EdgeIngestService._reprecificar(TENANT, {
+      cliente: '', pagamento: 'pix', pago: false,
+      itens: [{ id: encodeRefItem('cp1', 0), qty: 1, dobrada: true }],
+    } as never)
+    expect(itens[0].nome).toBe('Caipirinha · Copão')
+    expect(itens[0].preco).toBe(20)
+    expect(total).toBe(20)
+  })
 })
