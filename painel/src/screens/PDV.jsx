@@ -121,30 +121,31 @@ export function PDV({ criar }) {
           </div>
         )}
 
-        {/* grade de produtos */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(208px, 1fr))', gap: '16px' }}>
+        {/* grade de produtos (cards um pouco maiores; borda destaca no hover) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '18px' }}>
           {produtos.map((p) => (
             <button
               key={p.id}
+              className="sd-drink-card"
               onClick={() => { setModal(p); setModalTam(0); setModalQty(1); }}
-              style={{ textAlign: 'left', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '17px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer', color: 'inherit' }}
+              style={{ textAlign: 'left', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px', cursor: 'pointer', color: 'inherit' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', flex: 'none', marginTop: '3px', background: CAT_COR[p.cat] || 'var(--accent)' }} />
-                <span style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'right' }}>{volLabel(p)}</span>
+                <span style={{ width: '13px', height: '13px', borderRadius: '50%', flex: 'none', marginTop: '3px', background: CAT_COR[p.cat] || 'var(--accent)' }} />
+                <span style={{ fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'right' }}>{volLabel(p)}</span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: '16.5px', lineHeight: 1.22, letterSpacing: '.01em', textTransform: 'uppercase', minHeight: '60px' }}>{p.nome}</div>
+              <div style={{ fontWeight: 700, fontSize: '18.5px', lineHeight: 1.22, letterSpacing: '.01em', textTransform: 'uppercase', minHeight: '66px' }}>{p.nome}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '8px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
-                  <span style={{ fontSize: '10.5px', color: 'var(--muted)', height: '13px' }}>{p.tamanhos && p.tamanhos.length > 1 ? 'a partir de' : ''}</span>
-                  <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '21px', letterSpacing: '-.02em' }}>{brl(precoMin(p))}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--muted)', height: '14px' }}>{p.tamanhos && p.tamanhos.length > 1 ? 'a partir de' : ''}</span>
+                  <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: '24px', letterSpacing: '-.02em' }}>{brl(precoMin(p))}</span>
                 </div>
                 {p.img && (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', minWidth: 0 }}>
-                    <img src={p.img} alt="" style={{ maxWidth: '100%', maxHeight: '58px', objectFit: 'contain', display: 'block' }} />
+                    <img src={p.img} alt="" style={{ maxWidth: '100%', maxHeight: '64px', objectFit: 'contain', display: 'block' }} />
                   </div>
                 )}
-                <span style={{ width: '34px', height: '34px', flex: 'none', borderRadius: '10px', background: 'var(--accent)', color: 'var(--onAccent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '23px', fontWeight: 700, lineHeight: 1 }}>+</span>
+                <span style={{ width: '40px', height: '40px', flex: 'none', borderRadius: '11px', background: 'var(--accent)', color: 'var(--onAccent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, lineHeight: 1 }}>+</span>
               </div>
             </button>
           ))}
