@@ -37,6 +37,7 @@ export function PDV({ criar }) {
   const [modal, setModal] = useState(null);
   const [modalTam, setModalTam] = useState(0);
   const [modalQty, setModalQty] = useState(1);
+  const [modalDobra, setModalDobra] = useState(false); // "dobrada" no modal do item
   const [gerando, setGerando] = useState(false);
   const [cupom, setCupom] = useState(null);
   const [sheetAberto, setSheetAberto] = useState(false); // carrinho colapsável (celular/tablet)
@@ -52,13 +53,17 @@ export function PDV({ criar }) {
   const total = cartItens.reduce((s, [, c]) => s + c.preco * c.qty, 0);
   const qtdItens = cartItens.reduce((s, [, c]) => s + c.qty, 0);
 
+  const dobraDe = (p) => (p?.dobravel ? Math.max(0, Number(p.precoDobra) || 0) : 0);
+
   function confirmarModal() {
     if (!modal) return;
     const t = modal.tamanhos[modalTam];
-    const key = modal.id + '|' + t.rotulo;
+    const add = modalDobra ? dobraDe(modal) : 0;
+    const key = modal.id + '|' + t.rotulo + (add > 0 ? '|dobra' : '');
+    const rotulo = add > 0 ? `${t.rotulo} · Dobrada` : t.rotulo;
     setCart((c) => ({
       ...c,
-      [key]: { nome: modal.nome, rotulo: t.rotulo, preco: Number(t.preco), qty: (c[key]?.qty || 0) + modalQty },
+      [key]: { nome: modal.nome, rotulo, preco: Number(t.preco) + add, qty: (c[key]?.qty || 0) + modalQty },
     }));
     setModal(null);
   }
@@ -229,7 +234,7 @@ export function PDV({ criar }) {
             <button
               key={p.id}
               className="sd-drink-card"
-              onClick={() => { setModal(p); setModalTam(0); setModalQty(1); }}
+              onClick={() => { setModal(p); setModalTam(0); setModalQty(1); setModalDobra(false); }}
               style={{ textAlign: 'left', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px', cursor: 'pointer', color: 'inherit' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
@@ -327,13 +332,32 @@ export function PDV({ criar }) {
             ))}
           </div>
 
+          {/* dobrada (dose dupla) — só quando o item permite */}
+          {dobraDe(modal) > 0 && (
+            <div
+              onClick={() => setModalDobra((v) => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', cursor: 'pointer',
+                borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', transition: 'all .12s',
+                border: '1.5px solid ' + (modalDobra ? 'var(--accent)' : 'var(--border)'),
+                background: modalDobra ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--bg)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--fg)' }}>Dobrar a dose</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--muted)' }}>+{brl(dobraDe(modal))} por unidade</span>
+              </div>
+              <span style={{ width: '24px', height: '24px', flex: 'none', borderRadius: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 800, border: '1.5px solid ' + (modalDobra ? 'var(--accent)' : 'var(--border)'), background: modalDobra ? 'var(--accent)' : 'transparent', color: modalDobra ? 'var(--onAccent)' : 'transparent' }}>✓</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px', marginBottom: '16px' }}>
             <button onClick={() => setModalQty((q) => Math.max(1, q - 1))} style={bigQtyBtn}>−</button>
             <span style={{ fontFamily: "'Bricolage Grotesque'", fontWeight: 800, fontSize: '26px', color: 'var(--fg)', minWidth: '34px', textAlign: 'center' }}>{modalQty}</span>
             <button onClick={() => setModalQty((q) => q + 1)} style={bigQtyBtn}>+</button>
           </div>
           <button onClick={confirmarModal} style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: 'var(--accent)', color: 'var(--onAccent)', fontWeight: 800, fontSize: '15px' }}>
-            Adicionar · {brl((Number(modal.tamanhos[modalTam]?.preco) || 0) * modalQty)}
+            Adicionar · {brl(((Number(modal.tamanhos[modalTam]?.preco) || 0) + (modalDobra ? dobraDe(modal) : 0)) * modalQty)}
           </button>
         </Overlay>
       )}

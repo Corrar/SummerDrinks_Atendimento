@@ -56,14 +56,16 @@ publicRouter.get(
   '/public/:tenant/menu',
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
-    const r = await pool.query<{ id: string; cat: string; nome: string; descricao: string; tamanhos: { rotulo: string; preco: number }[]; img: string }>(
-      `SELECT id, cat, nome, descricao, tamanhos, img
+    const r = await pool.query<{ id: string; cat: string; nome: string; descricao: string; tamanhos: { rotulo: string; preco: number }[]; img: string; dobravel: boolean; preco_dobra: number }>(
+      `SELECT id, cat, nome, descricao, tamanhos, img, dobravel, preco_dobra
          FROM catalogo_item WHERE tenant_id=$1 ORDER BY ordem, nome`,
       [tid],
     )
-    const itens: Array<{ id: string; n: string; p: number; v: string; d: string; cat: string; color: string; img: string }> = []
+    const itens: Array<{ id: string; n: string; p: number; v: string; d: string; cat: string; color: string; img: string; db: number }> = []
     for (const x of r.rows) {
       const cor = COR_CATEGORIA[x.cat] ?? '#f5a623'
+      // `db` = adicional da dobra (0 = não oferece). O servidor continua dono do preço.
+      const db = x.dobravel ? Math.max(0, Number(x.preco_dobra) || 0) : 0
       x.tamanhos.forEach((t, idx) => {
         itens.push({
           id: encodeRefItem(x.id, idx),
@@ -74,6 +76,7 @@ publicRouter.get(
           cat: x.cat,
           color: cor,
           img: x.img,
+          db,
         })
       })
     }

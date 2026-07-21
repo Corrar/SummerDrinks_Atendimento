@@ -57,12 +57,16 @@ const itemSchema = z.object({
   tamanhos: z.array(tamanhoSchema).min(1),
   img: z.string().max(300).default(''),
   ordem: z.number().int().default(0),
+  // "Dobrada" (dose dupla): liga/desliga por item + adicional fixo cobrado.
+  dobravel: z.boolean().default(false),
+  precoDobra: z.number().nonnegative().default(0),
 })
 
 type ItemInput = z.infer<typeof itemSchema>
 
-// Colunas retornadas ao painel (shape interno do catálogo).
-const COLS = 'id, cat, nome, descricao, tamanhos, img, ordem'
+// Colunas retornadas ao painel (shape interno do catálogo). `preco_dobra` é
+// aliasado p/ camelCase (o painel lê/envia `precoDobra`).
+const COLS = 'id, cat, nome, descricao, tamanhos, img, ordem, dobravel, preco_dobra AS "precoDobra"'
 
 // GET /catalogo — lista os itens do tenant autenticado.
 catalogoRouter.get(
@@ -86,14 +90,15 @@ catalogoRouter.post(
     const b = req.body as ItemInput
     const tenant = req.auth!.tenant
     const r = await pool.query(
-      `INSERT INTO catalogo_item (tenant_id, id, cat, nome, descricao, tamanhos, img, ordem)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
+      `INSERT INTO catalogo_item (tenant_id, id, cat, nome, descricao, tamanhos, img, ordem, dobravel, preco_dobra)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)
        ON CONFLICT (tenant_id, id) DO UPDATE
          SET cat = EXCLUDED.cat, nome = EXCLUDED.nome, descricao = EXCLUDED.descricao,
              tamanhos = EXCLUDED.tamanhos, img = EXCLUDED.img, ordem = EXCLUDED.ordem,
+             dobravel = EXCLUDED.dobravel, preco_dobra = EXCLUDED.preco_dobra,
              atualizado_em = now()
        RETURNING ${COLS}`,
-      [tenant, b.id, b.cat, b.nome, b.descricao, JSON.stringify(b.tamanhos), b.img, b.ordem],
+      [tenant, b.id, b.cat, b.nome, b.descricao, JSON.stringify(b.tamanhos), b.img, b.ordem, b.dobravel, b.precoDobra],
     )
     const item = r.rows[0]
     emitir(tenant, 'catalogo:updated', item)
@@ -134,10 +139,10 @@ catalogoRouter.put(
     const r = await pool.query(
       `UPDATE catalogo_item
           SET cat = $3, nome = $4, descricao = $5, tamanhos = $6::jsonb, img = $7, ordem = $8,
-              atualizado_em = now()
+              dobravel = $9, preco_dobra = $10, atualizado_em = now()
         WHERE tenant_id = $1 AND id = $2
         RETURNING ${COLS}`,
-      [tenant, id, b.cat, b.nome, b.descricao, JSON.stringify(b.tamanhos), b.img, b.ordem],
+      [tenant, id, b.cat, b.nome, b.descricao, JSON.stringify(b.tamanhos), b.img, b.ordem, b.dobravel, b.precoDobra],
     )
     const item = r.rows[0]
     if (!item) throw new ErroDominio('CATALOGO_NAO_ENCONTRADO', 'Item não encontrado.', 404)

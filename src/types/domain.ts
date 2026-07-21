@@ -34,6 +34,8 @@ export interface ItemCatalogo {
   desc: string
   tamanhos: Tamanho[]
   img: string
+  dobravel: boolean   // oferece "dobrada" (dose dupla)?
+  precoDobra: number  // adicional fixo cobrado ao dobrar (só vale se dobravel)
 }
 
 export interface Agenda {

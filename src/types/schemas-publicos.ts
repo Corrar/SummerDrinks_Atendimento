@@ -18,6 +18,7 @@ export const itemPublicoSchema = z.object({
   id: z.string().min(1).max(80),
   qty: z.number().int().positive().max(99),
   p: z.number().nonnegative().optional(), // apenas para log de divergência
+  dobrada: z.boolean().default(false), // cliente pediu dose dupla? preço da dobra vem do servidor
 })
 
 export const pedidoPublicoSchema = z.object({

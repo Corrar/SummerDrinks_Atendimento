@@ -26,6 +26,8 @@ interface LinhaCatalogo {
   id: string
   nome: string
   tamanhos: { rotulo: string; preco: number }[]
+  dobravel: boolean
+  preco_dobra: number
 }
 
 export interface ResultadoPedidoPublico {
@@ -58,12 +60,12 @@ export const EdgeIngestService = {
     const refs = input.itens.map((it) => {
       const ref = decodeRefItem(it.id)
       if (!ref) throw new ErroDominio('ITEM_INVALIDO', `Item com referência inválida: ${it.id}`, 422)
-      return { ...ref, qty: it.qty, pCliente: it.p }
+      return { ...ref, qty: it.qty, pCliente: it.p, dobrada: !!it.dobrada }
     })
 
     const catalogoIds = [...new Set(refs.map((r) => r.catalogoId))]
     const r = await pool.query<LinhaCatalogo>(
-      `SELECT id, nome, tamanhos FROM catalogo_item
+      `SELECT id, nome, tamanhos, dobravel, preco_dobra FROM catalogo_item
         WHERE tenant_id = $1 AND id = ANY($2::text[])`,
       [tenantId, catalogoIds],
     )
@@ -77,15 +79,21 @@ export const EdgeIngestService = {
       const t = cat.tamanhos[ref.tamanhoIdx]
       if (!t) throw new ErroDominio('ITEM_INVALIDO', `Tamanho inexistente para ${ref.catalogoId}`, 422)
 
-      const preco = Number(t.preco)
-      if (!Number.isFinite(preco) || preco < 0) {
+      const base = Number(t.preco)
+      if (!Number.isFinite(base) || base < 0) {
         throw new ErroDominio('PRECO_INVALIDO', `Preço inválido no catálogo para ${ref.catalogoId}`, 500)
       }
+      // Dobrada: adicional fixo do servidor, só se o item permite hoje. Se o
+      // gestor desligou a dobra depois que o cliente montou o carrinho, cai no
+      // preço normal (servidor é dono do preço) — nunca cobra a dobra "fantasma".
+      const adicionalDobra = ref.dobrada && cat.dobravel ? Math.max(0, Number(cat.preco_dobra) || 0) : 0
+      const preco = Math.round((base + adicionalDobra) * 100) / 100
       if (ref.pCliente != null && Math.abs(ref.pCliente - preco) > 0.001) {
         console.warn(`[edge] divergência de preço em ${ref.catalogoId}: cliente=${ref.pCliente} servidor=${preco}`)
       }
 
-      itens.push({ nome: nomeItem(cat.nome, t.rotulo), preco, qty: ref.qty })
+      const nome = adicionalDobra > 0 ? `${nomeItem(cat.nome, t.rotulo)} · Dobrada` : nomeItem(cat.nome, t.rotulo)
+      itens.push({ nome, preco, qty: ref.qty })
       total += preco * ref.qty
     }
     return { itens, total: Math.round(total * 100) / 100 }

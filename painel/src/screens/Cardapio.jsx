@@ -74,6 +74,8 @@ export function Cardapio({ itens, recarregar }) {
         ...item,
         tamanhos: item.tamanhos.map((t) => ({ rotulo: t.rotulo, preco: Number(t.preco) || 0 })),
         ordem: Number(item.ordem) || 0,
+        dobravel: !!item.dobravel,
+        precoDobra: item.dobravel ? (Number(item.precoDobra) || 0) : 0,
       });
       descartar(id);
       await recarregar();
@@ -181,6 +183,24 @@ export function Cardapio({ itens, recarregar }) {
 
                         {/* descrição */}
                         <textarea value={item.descricao} onChange={(e) => editar(original.id, { descricao: e.target.value })} placeholder="Descrição / ingredientes" rows={2} style={{ ...inpBase, width: '100%', padding: '8px 11px', fontSize: '12px', lineHeight: 1.45, resize: 'vertical', fontFamily: 'inherit' }} />
+
+                        {/* dobrada (dose dupla): liga/desliga a oferta + adicional fixo cobrado */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => editar(original.id, { dobravel: !item.dobravel })}
+                            style={{ display: 'flex', alignItems: 'center', gap: '7px', borderRadius: '9px', padding: '8px 12px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', transition: 'all .12s', border: '1px solid ' + (item.dobravel ? 'var(--accent)' : 'var(--border)'), background: item.dobravel ? 'color-mix(in srgb,var(--accent) 15%,transparent)' : 'var(--surface)', color: item.dobravel ? 'var(--accent)' : 'var(--muted)' }}
+                          >
+                            {item.dobravel ? '✓' : '+'} Permite dobrada
+                          </button>
+                          {item.dobravel && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 11px' }}>
+                              <span style={{ color: 'var(--muted)', fontSize: '12.5px', fontWeight: 600 }}>+R$</span>
+                              <input value={item.precoDobra ?? 0} onChange={(e) => editar(original.id, { precoDobra: e.target.value.replace(',', '.') })} inputMode="decimal" placeholder="0" style={{ width: '58px', background: 'none', border: 'none', padding: '9px 0', color: 'var(--fg)', fontSize: '13.5px', fontWeight: 700, outline: 'none', fontFamily: "'Bricolage Grotesque',sans-serif" }} />
+                              <span style={{ color: 'var(--muted)', fontSize: '11px' }}>na dobra</span>
+                            </div>
+                          )}
+                        </div>
 
                         {/* foto */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '11px', flexWrap: 'wrap', paddingTop: '2px' }}>
