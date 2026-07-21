@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Dispo } from './Dispo.jsx';
 import { useViewport } from '../hooks/useViewport.js';
+import { useCatalogo } from '../hooks/useCatalogo.js';
 
 const brl = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const TIPO_COR = { 'Aniversário': '#ff5da2', 'Casamento': '#f5a623', 'Corporativo': '#4aa8d8', 'Formatura': '#b07be0', 'Confraternização': '#7cc142', 'Festa Particular': '#3fcaa8', 'Outro': '#a99a83' };
@@ -276,9 +277,16 @@ function NovaAgendaModal({ onClose, criar }) {
   );
 }
 
-// Cardápios de evento — gerencia config.cardapiosEvento (mesma fonte da aba Ajustes).
+// Cardápios de evento — drawer LATERAL (abre da direita) com editor de chips,
+// igual ao protótipo: lista de presets + formulário (nome + itens como chips,
+// digitar/Enter ou tocar nos drinks do cardápio). Fonte: config.cardapiosEvento.
 function CardapiosEventoModal({ onClose }) {
+  const { isMobile } = useViewport();
+  const { itens: catalogo } = useCatalogo();
   const [form, setForm] = useState(null);
+  const [edit, setEdit] = useState(null);   // null (lista) | 'novo' | id
+  const [draft, setDraft] = useState(null);  // { nome, itens: string[] }
+  const [input, setInput] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [aviso, setAviso] = useState('');
 
@@ -289,50 +297,122 @@ function CardapiosEventoModal({ onClose }) {
   }, []);
 
   const ce = () => form?.cardapiosEvento || [];
-  const setCe = (lista) => setForm((f) => ({ ...f, cardapiosEvento: lista }));
-  const add = () => setCe([...ce(), { id: 'ce' + Date.now(), nome: 'Novo cardápio', itens: '' }]);
-  const edit = (id, patch) => setCe(ce().map((c) => (c.id === id ? { ...c, ...patch } : c)));
-  const rm = (id) => setCe(ce().filter((c) => c.id !== id));
+  const drinkChips = useMemo(() => [...new Set((catalogo || []).map((p) => p.nome).filter(Boolean))], [catalogo]);
 
-  async function salvar() {
-    if (!form || salvando) return;
+  const novo = () => { setEdit('novo'); setDraft({ nome: '', itens: [] }); setInput(''); setAviso(''); };
+  const editar = (c) => { setEdit(c.id); setDraft({ nome: c.nome, itens: (c.itens || '').split(',').map((x) => x.trim()).filter(Boolean) }); setInput(''); setAviso(''); };
+  const cancelar = () => { setEdit(null); setDraft(null); setInput(''); };
+  const addItem = (nome) => {
+    const n = (nome || '').trim();
+    if (!n) return;
+    setDraft((d) => (d && !d.itens.includes(n) ? { ...d, itens: [...d.itens, n] } : d));
+    setInput('');
+  };
+  const removeItem = (i) => setDraft((d) => ({ ...d, itens: d.itens.filter((_, idx) => idx !== i) }));
+
+  async function persistir(novoArr) {
     setSalvando(true); setAviso('');
     try {
-      const salvo = await api.salvarConfig({ ...form, cardapiosEvento: ce() });
+      const salvo = await api.salvarConfig({ ...form, cardapiosEvento: novoArr });
       setForm(salvo);
-      setAviso('Cardápios salvos.');
+      return true;
     } catch (e) {
       setAviso(e?.codigo === 'CONFLITO_VERSAO' ? 'Outro operador salvou antes — reabra e tente de novo.' : (e?.message || 'Não foi possível salvar.'));
+      return false;
     } finally { setSalvando(false); }
   }
 
+  async function salvarForm() {
+    if (!draft || !draft.nome.trim() || salvando) return;
+    const entry = { nome: draft.nome.trim(), itens: draft.itens.join(', ') };
+    const arr = edit === 'novo'
+      ? [...ce(), { id: 'ce' + Date.now(), ...entry }]
+      : ce().map((c) => (c.id === edit ? { ...c, ...entry } : c));
+    if (await persistir(arr)) cancelar();
+  }
+
+  async function excluir(id) {
+    if (salvando) return;
+    await persistir(ce().filter((c) => c.id !== id));
+  }
+
+  const chipStyle = { flex: 'none', width: '36px', height: '36px', borderRadius: '9px', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '14px', cursor: 'pointer', lineHeight: 1 };
+
   return (
-    <ModalCasca titulo="★ Cardápios de evento" onClose={onClose}>
-      {!form ? (
-        <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '14px 0', textAlign: 'center' }}>Carregando…</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Presets oferecidos como atalho quando o cliente solicita um evento (também editáveis em Ajustes).</div>
-          {ce().length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '13px', padding: '14px 0' }}>Nenhum cardápio de evento ainda.</div>}
-          {ce().map((c) => (
-            <div key={c.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '13px', padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--accent)', fontSize: '15px' }}>★</span>
-                <input value={c.nome} onChange={(e) => edit(c.id, { nome: e.target.value })} placeholder="Nome do cardápio (ex.: Festa Tropical)" style={{ ...modalInp, fontWeight: 600, background: 'var(--surface)' }} />
-                <button onClick={() => rm(c.id)} title="Excluir" style={{ flex: 'none', width: '34px', height: '34px', borderRadius: '9px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#e2615a', fontSize: '13px', cursor: 'pointer' }}>🗑</button>
-              </div>
-              <textarea value={c.itens} onChange={(e) => edit(c.id, { itens: e.target.value })} rows={2} placeholder="Drinks incluídos..." style={{ ...modalInp, background: 'var(--surface)', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }} />
-            </div>
-          ))}
-          <button onClick={add} style={{ background: 'none', border: '1.5px dashed var(--border)', color: 'var(--muted)', borderRadius: '13px', padding: '14px', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}>+ Novo cardápio</button>
-          {aviso && <div style={{ fontSize: '12.5px', color: aviso.includes('salvos') ? 'var(--accent2)' : '#ff927d', fontWeight: 600 }}>{aviso}</div>}
-          <div style={{ display: 'flex', gap: '9px' }}>
-            <button onClick={salvar} disabled={salvando} style={{ flex: 1, background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '11px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar cardápios'}</button>
-            <button onClick={onClose} style={{ flex: 'none', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '11px', padding: '13px 18px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Fechar</button>
-          </div>
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 47, animation: 'sd-cover .2s ease-out both' }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: isMobile ? '100%' : 'min(480px, 100%)', background: 'var(--surface)', borderLeft: '1px solid var(--border)', zIndex: 48, display: 'flex', flexDirection: 'column', boxShadow: '-24px 0 60px rgba(0,0,0,.42)', animation: 'sd-slidein .3s cubic-bezier(.22,1,.36,1) both' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '20px 22px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 800, fontSize: '19px', letterSpacing: '-.01em' }}><span style={{ color: 'var(--accent)' }}>★</span> Cardápios de evento</div>
+          <button onClick={onClose} style={{ flex: 'none', width: '36px', height: '36px', borderRadius: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', fontSize: '15px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
-      )}
-    </ModalCasca>
+
+        <div className="sd-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 22px' }}>
+          {!form ? (
+            <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '14px 0', textAlign: 'center' }}>Carregando…</div>
+          ) : edit ? (
+            /* ===== FORMULÁRIO (chips) ===== */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '13px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.1em' }}>{edit === 'novo' ? 'Novo cardápio' : 'Editar cardápio'}</div>
+              <input value={draft.nome} onChange={(e) => setDraft((d) => ({ ...d, nome: e.target.value }))} placeholder="Nome do cardápio (ex.: Festa Tropical)" autoFocus style={{ ...modalInp, fontWeight: 600, fontSize: '14.5px', padding: '12px 14px', borderRadius: '11px' }} />
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '8px' }}>Itens do cardápio</div>
+                {draft.itens.length === 0 && <div style={{ fontSize: '12.5px', color: 'var(--muted)', padding: '8px 0' }}>Nenhum item ainda — adicione abaixo ou toque nos drinks.</div>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', marginBottom: '11px' }}>
+                  {draft.itens.map((it, i) => (
+                    <span key={it} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'color-mix(in srgb,var(--accent) 15%,transparent)', border: '1px solid var(--accent)', color: 'var(--fg)', borderRadius: '999px', padding: '7px 8px 7px 13px', fontSize: '13px', fontWeight: 600 }}>
+                      {it}
+                      <button onClick={() => removeItem(i)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '19px', height: '19px', borderRadius: '50%', background: 'rgba(0,0,0,.25)', border: 'none', color: 'var(--fg)', fontSize: '11px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(input); } }} placeholder="Digite um item e Enter..." style={{ ...modalInp, flex: 1, minWidth: 0 }} />
+                  <button onClick={() => addItem(input)} style={{ flex: 'none', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '10px', padding: '11px 16px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>Adicionar</button>
+                </div>
+                {drinkChips.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', margin: '14px 0 8px' }}>Ou toque para adicionar do cardápio</div>
+                    <div className="sd-scroll" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '150px', overflowY: 'auto' }}>
+                      {drinkChips.map((nome) => {
+                        const posto = draft.itens.includes(nome);
+                        return (
+                          <button key={nome} onClick={() => addItem(nome)} disabled={posto} style={{ background: 'var(--bg)', border: '1px solid ' + (posto ? 'var(--accent)' : 'var(--border)'), color: posto ? 'var(--accent)' : 'var(--muted)', borderRadius: '999px', padding: '7px 13px', fontSize: '12.5px', fontWeight: 600, cursor: posto ? 'default' : 'pointer', opacity: posto ? 0.6 : 1 }}>+ {nome}</button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+              {aviso && <div style={{ fontSize: '12.5px', color: '#ff927d', fontWeight: 600 }}>{aviso}</div>}
+              <div style={{ display: 'flex', gap: '9px', marginTop: '2px' }}>
+                <button onClick={salvarForm} disabled={salvando || !draft.nome.trim()} style={{ flex: 1, background: 'var(--accent)', color: 'var(--onAccent)', border: 'none', borderRadius: '11px', padding: '13px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', opacity: draft.nome.trim() ? 1 : 0.5 }}>{salvando ? 'Salvando…' : 'Salvar cardápio'}</button>
+                <button onClick={cancelar} style={{ flex: 'none', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: '11px', padding: '13px 18px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            /* ===== LISTA ===== */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Presets oferecidos como atalho quando o cliente solicita um evento (também editáveis em Ajustes).</div>
+              {ce().length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '13px', padding: '14px 0' }}>Nenhum cardápio de evento ainda.</div>}
+              {ce().map((c) => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '11px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '13px', padding: '13px 15px' }}>
+                  <span style={{ color: 'var(--accent)', fontSize: '15px', flex: 'none' }}>★</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700 }}>{c.nome}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px', lineHeight: 1.4 }}>{c.itens || 'Sem itens'}</div>
+                  </div>
+                  <button onClick={() => editar(c)} title="Editar" style={{ ...chipStyle, color: 'var(--muted)' }}>✎</button>
+                  <button onClick={() => excluir(c.id)} title="Excluir" style={{ ...chipStyle, color: '#e2615a' }}>🗑</button>
+                </div>
+              ))}
+              <button onClick={novo} style={{ width: '100%', background: 'none', border: '1.5px dashed var(--border)', color: 'var(--muted)', borderRadius: '13px', padding: '14px', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}>+ Novo cardápio</button>
+              {aviso && <div style={{ fontSize: '12.5px', color: '#ff927d', fontWeight: 600 }}>{aviso}</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
