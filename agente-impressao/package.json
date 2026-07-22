@@ -1,0 +1,13 @@
+{
+  "name": "summer-drinks-agente-impressao",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agente local que imprime automaticamente os pedidos na Tanca TP-620 (ESC/POS, corte parcial).",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/index.js",
+    "teste": "node --test test/*.test.mjs",
+    "teste:ticket": "node test/gerar-amostra.js"
+  }
+}
