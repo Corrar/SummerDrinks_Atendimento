@@ -46,6 +46,8 @@ export const eventoPublicoSchema = z.object({
   pessoas: z.coerce.number().int().min(0).max(5000).default(0),
   local: z.string().max(160).default('').transform(semHtml),
   obs: z.string().max(600).default('').transform(semHtml),
+  // Cardápio do evento: nome de um preset OU a lista que o cliente montou. Texto livre.
+  cardapio: z.string().max(800).default('').transform(semHtml),
   data: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'data deve ser YYYY-MM-DD')

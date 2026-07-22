@@ -23,7 +23,7 @@ const asy =
   }
 
 // Colunas SEM PII p/ RETURNING de criação — espelham AgendaBase.
-const COLS_BASE = 'id, cliente, tipo, data, hora, local, pessoas, valor, obs, status, origem, protocolo'
+const COLS_BASE = 'id, cliente, tipo, data, hora, local, pessoas, valor, obs, cardapio, status, origem, protocolo'
 
 const dataRe = /^\d{4}-\d{2}-\d{2}$/
 

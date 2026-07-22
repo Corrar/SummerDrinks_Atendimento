@@ -144,11 +144,29 @@ publicRouter.get(
   '/public/:tenant/config',
   asy(async (req, res) => {
     const tid = await tenantIdPorSlug(String(req.params.tenant))
-    const r = await pool.query<{ horarios: unknown; locais: unknown; telefone: string; whatsapp: string; email: string; instagram: string }>(
-      `SELECT horarios, locais, telefone, whatsapp, email, instagram FROM config WHERE tenant_id=$1`,
-      [tid],
-    )
-    const row = r.rows[0]
+    // `cardapios_evento` (presets de open bar) vira público aqui p/ o cliente
+    // escolher um cardápio pronto na solicitação de evento. Resiliente à migration
+    // 010 não rodada (42703) — sem ela, devolve config sem os presets.
+    type LinhaCfg = { horarios: unknown; locais: unknown; telefone: string; whatsapp: string; email: string; instagram: string; cardapios_evento: unknown }
+    let row: LinhaCfg | undefined
+    try {
+      const r = await pool.query<LinhaCfg>(
+        `SELECT horarios, locais, telefone, whatsapp, email, instagram, cardapios_evento FROM config WHERE tenant_id=$1`,
+        [tid],
+      )
+      row = r.rows[0]
+    } catch (e) {
+      if ((e as { code?: string })?.code !== '42703') throw e
+      const r = await pool.query<Omit<LinhaCfg, 'cardapios_evento'>>(
+        `SELECT horarios, locais, telefone, whatsapp, email, instagram FROM config WHERE tenant_id=$1`,
+        [tid],
+      )
+      row = r.rows[0] ? { ...r.rows[0], cardapios_evento: [] } : undefined
+    }
+    // Só nome + itens (sem nada sensível).
+    const presets = Array.isArray(row?.cardapios_evento)
+      ? (row!.cardapios_evento as Array<{ id?: string; nome?: string; itens?: string }>).map((c) => ({ id: c.id ?? '', nome: c.nome ?? '', itens: c.itens ?? '' }))
+      : []
     res.setHeader('Cache-Control', 'public, max-age=60')
     res.json({
       horarios: row?.horarios ?? [],
@@ -159,6 +177,7 @@ publicRouter.get(
         email: row?.email ?? '',
         instagram: row?.instagram ?? '',
       },
+      cardapiosEvento: presets,
     })
   }),
 )

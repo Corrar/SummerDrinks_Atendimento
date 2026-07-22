@@ -115,15 +115,18 @@ describe('config pública — contrato da borda', () => {
           whatsapp: bodyOk.whatsapp,
           email: bodyOk.email,
           instagram: bodyOk.instagram,
+          cardapios_evento: [{ id: 'ce1', nome: 'Festa Tropical', itens: 'Caipirinha, Aperol' }],
         }],
         rowCount: 1,
       } as never)
     const r = await request(app).get('/public/summer/config')
     expect(r.status).toBe(200)
-    // Allowlist exata: nada além destas chaves sai na borda pública.
-    expect(Object.keys(r.body).sort()).toEqual(['contato', 'horarios', 'locais'])
+    // Allowlist exata: horarios+locais+contato + cardapiosEvento (presets p/ o cliente).
+    expect(Object.keys(r.body).sort()).toEqual(['cardapiosEvento', 'contato', 'horarios', 'locais'])
     expect(Object.keys(r.body.contato).sort()).toEqual(['email', 'instagram', 'telefone', 'whatsapp'])
     expect(r.body.contato.whatsapp).toBe(bodyOk.whatsapp)
+    // Presets só com nome+itens (sem nada sensível).
+    expect(r.body.cardapiosEvento).toEqual([{ id: 'ce1', nome: 'Festa Tropical', itens: 'Caipirinha, Aperol' }])
     expect(r.body).not.toHaveProperty('version')
   })
 
@@ -137,6 +140,7 @@ describe('config pública — contrato da borda', () => {
       horarios: [],
       locais: [],
       contato: { telefone: '', whatsapp: '', email: '', instagram: '' },
+      cardapiosEvento: [],
     })
   })
 })

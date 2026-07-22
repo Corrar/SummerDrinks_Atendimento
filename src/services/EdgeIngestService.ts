@@ -187,9 +187,9 @@ export const EdgeIngestService = {
     await withTransaction(async (tx) => {
       await tx.query(
         `INSERT INTO agenda
-           (tenant_id, id, cliente, telefone, email, tipo, data, hora, local, pessoas, valor, obs, status, origem, protocolo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, 0, $11, 'solicitado', 'app_cliente', $12)`,
-        [tenantId, id, input.nome, input.telefone, input.email, input.tipo, input.data, hora, input.local, input.pessoas, input.obs, protocolo],
+           (tenant_id, id, cliente, telefone, email, tipo, data, hora, local, pessoas, valor, obs, cardapio, status, origem, protocolo)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, 0, $11, $12, 'solicitado', 'app_cliente', $13)`,
+        [tenantId, id, input.nome, input.telefone, input.email, input.tipo, input.data, hora, input.local, input.pessoas, input.obs, input.cardapio, protocolo],
       )
       await tx.query(
         `INSERT INTO outbox (tenant_id, tipo, payload)
