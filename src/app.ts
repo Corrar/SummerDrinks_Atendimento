@@ -22,16 +22,27 @@ export function criarApp(): Express {
 
   app.disable('x-powered-by')
   app.use(helmet())
-  app.use(
-    cors({
-      origin: (origin, cb) => {
-        // sem origin (curl/health) ou na allowlist
-        if (!origin || env.corsOrigins.includes(origin)) return cb(null, true)
-        cb(new Error('Origem não permitida pelo CORS.'))
-      },
-      credentials: true,
-    }),
-  )
+
+  // CORS por superfície:
+  // - PÚBLICA (/public/* e /health): o app do cliente é aberto de QUALQUER
+  //   dispositivo/origem (QR no celular, domínio do PWA, previews da Vercel…).
+  //   Origin-gating aqui quebrava o cardápio quando a origem não batia exatamente
+  //   com CORS_ORIGINS. É uma API pública (sem segredo, sem cookie, rate-limited),
+  //   então liberamos qualquer origem.
+  // - PRIVADA (auth + rotas autenticadas): mantém a allowlist estrita (painel).
+  const corsPublico = cors() // Access-Control-Allow-Origin: * (sem credenciais)
+  const corsPrivado = cors({
+    origin: (origin, cb) => {
+      // sem origin (curl/health) ou na allowlist
+      if (!origin || env.corsOrigins.includes(origin)) return cb(null, true)
+      cb(new Error('Origem não permitida pelo CORS.'))
+    },
+    credentials: true,
+  })
+  app.use((req, res, next) => {
+    const publico = req.path === '/health' || req.path.startsWith('/public')
+    return (publico ? corsPublico : corsPrivado)(req, res, next)
+  })
   app.use(express.json({ limit: '32kb' }))
 
   app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }))
